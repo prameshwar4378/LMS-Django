@@ -11,11 +11,16 @@ class BookingSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
     check_in_datetime_str = serializers.CharField(source='check_in_datetime', read_only=True)
     expected_checkout_datetime_str = serializers.CharField(source='expected_checkout_datetime', read_only=True)
+    stay_id = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Booking
         fields = '__all__'
         read_only_fields = ('booking_number', 'created_by', 'created_at', 'updated_at')
+
+    def get_stay_id(self, obj):
+        stay = obj.stays.first()
+        return stay.id if stay else None
 
     def validate(self, attrs):
         from .services import validate_booking_payload
