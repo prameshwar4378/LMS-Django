@@ -8,6 +8,17 @@ class ChargeTypeSerializer(serializers.ModelSerializer):
         model = ChargeType
         fields = '__all__'
 
+    def validate_name(self, value):
+        name = value.strip()
+        if not name:
+            raise serializers.ValidationError("Category Name is required.")
+        qs = ChargeType.objects.filter(name__iexact=name)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("Category already exists.")
+        return name
+
 class ExtraChargeSerializer(serializers.ModelSerializer):
     charge_type_name = serializers.SerializerMethodField(read_only=True)
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
