@@ -17,3 +17,27 @@ class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = '__all__'
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        user_prop = getattr(user, 'property', None) if user and not user.is_superuser else None
+
+        prop = attrs.get('property') or user_prop
+        room_number = attrs.get('room_number')
+
+        if room_number:
+            room_number = str(room_number).strip()
+            attrs['room_number'] = room_number
+            qs = Room.objects.all()
+            if prop:
+                qs = qs.filter(property=prop)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.filter(room_number__iexact=room_number).exists():
+                raise serializers.ValidationError({
+                    'room_number': [f"Room '{room_number}' already exists in this property. Please enter a different room number."]
+                })
+
+        return attrs
+

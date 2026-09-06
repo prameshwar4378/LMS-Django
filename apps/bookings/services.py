@@ -140,7 +140,21 @@ def validate_booking_payload(data, user=None, instance=None, is_walkin=False):
         return None, errors
 
     # Calculate Nights & Total
-    nights = max(1, (dt_out.date() - dt_in.date()).days)
+    cal_nights = max(1, (dt_out.date() - dt_in.date()).days)
+    chargeable_nights_in = data.get('chargeable_nights')
+    validated_chargeable_nights = None
+    if chargeable_nights_in is not None and str(chargeable_nights_in).strip().isdigit():
+        val_cn = int(str(chargeable_nights_in).strip())
+        min_allowed = max(1, cal_nights - 1)
+        max_allowed = cal_nights + 1
+        if not (min_allowed <= val_cn <= max_allowed):
+            errors['chargeable_nights'] = [f"Considered nights ({val_cn}) must be between {min_allowed} and {max_allowed} for a {cal_nights}-night calendar stay."]
+            return None, errors
+        validated_chargeable_nights = val_cn
+        nights = val_cn
+    else:
+        nights = cal_nights
+
     subtotal = nights * base_rate
 
     # 5. Discount Validation (Rules #31, #32)
@@ -171,17 +185,22 @@ def validate_booking_payload(data, user=None, instance=None, is_walkin=False):
             errors['discount_value'] = ["Discount cannot be greater than the bill amount."]
             return None, errors
 
-    total_amount = max(0.0, subtotal - calculated_discount)
+    discounted_subtotal = max(0.0, subtotal - calculated_discount)
 
-    # 6. Advance Payment Validation (Rule #33)
+    # 6. GST & Grand Total Calculation
+    gst_percent = float(getattr(settings_obj, 'gst_percent', 18.0) or 18.0) if getattr(settings_obj, 'enable_gst', True) else 0.0
+    gst_amount = round((discounted_subtotal * gst_percent) / 100.0, 2)
+    grand_total_amount = round(discounted_subtotal + gst_amount, 2)
+
+    # 7. Advance Payment Validation (Rule #33)
     advance = float(data.get('advance_payment') or data.get('advance_amount') or (instance.advance_amount if instance else 0) or 0)
     if advance < 0:
         errors['advance_amount'] = ["Advance payment cannot be negative."]
         return None, errors
 
-    if advance > total_amount and total_amount > 0:
-        errors['advance_amount'] = ["Advance payment cannot exceed the applicable booking amount."]
-        return None, errors
+    # Cap advance to grand_total_amount if it slightly exceeds due to rounding
+    if advance > grand_total_amount and grand_total_amount > 0:
+        advance = grand_total_amount
 
     # 7. Room Availability Overlap Check (Rules #10, #11, #12, #13, #14, #16)
     is_avail, avail_err = check_room_availability(
@@ -208,6 +227,7 @@ def validate_booking_payload(data, user=None, instance=None, is_walkin=False):
         'discount_type': discount_type,
         'discount_value': discount_val,
         'advance_amount': advance,
+        'chargeable_nights': validated_chargeable_nights,
     }
     return validated_attrs, None
 

@@ -4,8 +4,9 @@ import datetime
 from apps.customers.models import Customer
 from apps.rooms.models import Room
 from apps.bookings.models import Booking
+from apps.settings_app.tenant_models import TenantModel
 
-class Stay(models.Model):
+class Stay(TenantModel):
     class Status(models.TextChoices):
         RESERVED = 'RESERVED', 'Reserved'
         CHECKED_IN = 'CHECKED_IN', 'Checked In'
@@ -31,11 +32,17 @@ class Stay(models.Model):
     adults = models.PositiveIntegerField(default=1)
     children = models.PositiveIntegerField(default=0)
     room_rate = models.DecimalField(max_digits=10, decimal_places=2)
+    chargeable_nights = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Explicitly billed room nights (e.g. bounded override for early check-in or late checkout)"
+    )
     
     discount_type = models.CharField(max_length=20, choices=DiscountType.choices, default=DiscountType.FIXED)
     discount_value = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     discount_reason = models.CharField(max_length=255, blank=True, null=True)
 
+    notes = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.CHECKED_IN)
     
     created_by = models.ForeignKey(

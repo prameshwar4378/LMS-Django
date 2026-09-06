@@ -1,6 +1,7 @@
 from django.db import models
+from apps.settings_app.tenant_models import TenantModel
 
-class Customer(models.Model):
+class Customer(TenantModel):
     class IDType(models.TextChoices):
         AADHAAR = 'Aadhaar', 'Aadhaar'
         PAN = 'PAN', 'PAN'
@@ -35,6 +36,8 @@ class Customer(models.Model):
     id_number = models.CharField(max_length=100, blank=True, null=True)
     id_document = models.FileField(upload_to='customers/documents/', blank=True, null=True)
     id_document_back = models.FileField(upload_to='customers/documents/', blank=True, null=True)
+
+    advance_credit = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

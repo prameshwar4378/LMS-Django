@@ -3,8 +3,9 @@ from django.conf import settings
 import datetime
 from apps.customers.models import Customer
 from apps.rooms.models import Room
+from apps.settings_app.tenant_models import TenantModel
 
-class Booking(models.Model):
+class Booking(TenantModel):
     class Status(models.TextChoices):
         PENDING = 'PENDING', 'Pending'
         CONFIRMED = 'CONFIRMED', 'Confirmed'

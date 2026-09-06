@@ -39,6 +39,16 @@ class StaySerializer(serializers.ModelSerializer):
             if dt_out <= dt_in:
                 raise serializers.ValidationError({'expected_checkout_date': 'Check-out datetime must be strictly after check-in datetime.'})
 
+        chargeable_n = attrs.get('chargeable_nights')
+        if chargeable_n is not None and check_in_d and checkout_d:
+            cal_nights = max(1, (checkout_d - check_in_d).days)
+            min_allowed = max(1, cal_nights - 1)
+            max_allowed = cal_nights + 1
+            if not (min_allowed <= int(chargeable_n) <= max_allowed):
+                raise serializers.ValidationError({
+                    'chargeable_nights': f"Considered nights ({chargeable_n}) must be between {min_allowed} and {max_allowed} for stay from {check_in_d} to {checkout_d}."
+                })
+
         return attrs
 
     def get_bill_summary(self, obj):

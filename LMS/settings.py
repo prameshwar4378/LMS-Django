@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'apps.stays',
     'apps.billing',
     'apps.settings_app',
+    'apps.shifts',
 ]
 
 AUTH_USER_MODEL = 'authentication.User'
@@ -50,6 +51,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.settings_app.subscription_middleware.TenantSubscriptionMiddleware',
 ]
 
 ROOT_URLCONF = 'LMS.urls'
@@ -108,8 +110,15 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+from corsheaders.defaults import default_headers
+
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-property-id',
+    'X-Property-ID',
+    'X-PROPERTY-ID',
+]
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Kolkata'
