@@ -36,14 +36,14 @@ def get_active_property_for_request(request):
                 if prop:
                     return prop
 
-            # Hotel Owner can access their primary hotel OR any of their branch properties
-            if user_prop and getattr(user, 'role', '') in ['HOTEL_OWNER', 'SUPER_ADMIN', 'SUPERUSER']:
-                parent_prop = user_prop.parent_property if user_prop.parent_property else user_prop
-                prop = Property.objects.filter(id=req_prop_id).filter(
-                    Q(id=parent_prop.id) | Q(parent_property=parent_prop)
-                ).first()
-                if prop:
-                    return prop
+            # Hotel Owner or Manager can access their primary hotel OR any of their branch properties
+            if user_prop and (getattr(user, 'role', '') in ['HOTEL_OWNER', 'SUPER_ADMIN', 'SUPERUSER', 'MANAGER'] or (hasattr(user, 'is_hotel_owner') and user.is_hotel_owner())):
+                root_prop = user_prop.get_root_property() if hasattr(user_prop, 'get_root_property') else user_prop
+                target_prop = Property.objects.filter(id=req_prop_id).first()
+                if target_prop:
+                    target_root = target_prop.get_root_property() if hasattr(target_prop, 'get_root_property') else target_prop
+                    if target_root and target_root.id == root_prop.id:
+                        return target_prop
         except Exception:
             pass
 
@@ -112,14 +112,18 @@ class TenantScopedViewSetMixin:
     def validate_tenant_integrity(self, validated_data, user_prop):
         """
         Prevents IDOR attacks by verifying related objects (e.g. Room, Customer, Booking, Stay)
-        belong to the user's active property.
+        belong to the user's active property or the parent hotel network.
         """
         if not user_prop or (self.request.user and self.request.user.is_superuser):
             return
 
+        user_root_id = user_prop.get_root_property().id if hasattr(user_prop, 'get_root_property') else user_prop.id
+
         for field_name, value in validated_data.items():
             if hasattr(value, 'property') and getattr(value, 'property', None):
-                if value.property_id != user_prop.id:
+                val_prop = value.property
+                val_root_id = val_prop.get_root_property().id if hasattr(val_prop, 'get_root_property') else val_prop.id
+                if val_root_id != user_root_id:
                     raise exceptions.ValidationError({
                         field_name: [f"Cross-property reference error: The referenced {field_name} does not belong to your hotel property."]
                     })

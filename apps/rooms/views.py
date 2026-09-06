@@ -47,7 +47,12 @@ class RoomTypeViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         user = getattr(self.request, 'user', None)
         if user and not user_has_perm(user, 'rooms', 'can_view'):
             require_perm(user, 'rooms', 'can_view', "You do not have permission to view room categories.")
-        return super().get_queryset()
+        qs = super().get_queryset()
+        active_prop = self.get_property_for_request()
+        if active_prop and getattr(active_prop, 'parent_property', None):
+            root_prop = active_prop.get_root_property()
+            return RoomType.objects.filter(Q(property=active_prop) | Q(property=root_prop)).order_by('name')
+        return qs
 
     def perform_create(self, serializer):
         require_perm(self.request.user, 'rooms', 'can_create', "You do not have permission to add room categories.")
@@ -98,8 +103,9 @@ class RoomViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             super().perform_create(serializer)
         except IntegrityError:
             room_num = serializer.validated_data.get('room_number', '')
+            branch_label = f"branch '{user_prop.name}'" if (user_prop and getattr(user_prop, 'parent_property', None)) else f"property '{user_prop.name}'" if user_prop else "this branch"
             raise ValidationError({
-                'room_number': [f"Room '{room_num}' already exists in this property. Please choose a different room number."]
+                'room_number': [f"Room '{room_num}' already exists in {branch_label}. Please choose a different room number."]
             })
 
     def perform_update(self, serializer):
