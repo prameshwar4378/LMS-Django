@@ -39,6 +39,7 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         import uuid
+        validated_data.pop('chargeable_nights', None)
         settings_obj = Settings.get_settings()
         prefix = settings_obj.booking_prefix or "BK-"
         today_str = datetime.date.today().strftime('%Y%m%d')
@@ -57,3 +58,7 @@ class BookingSerializer(serializers.ModelSerializer):
             validated_data['created_by'] = self.context['request'].user
 
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data.pop('chargeable_nights', None)
+        return super().update(instance, validated_data)
