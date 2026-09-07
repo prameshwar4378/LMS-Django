@@ -19,6 +19,11 @@ class StaySerializer(serializers.ModelSerializer):
     payments = PaymentSerializer(many=True, read_only=True)
     bill_summary = serializers.SerializerMethodField(read_only=True)
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    has_invoice = serializers.SerializerMethodField(read_only=True)
+    invoice_number = serializers.CharField(source='invoice.invoice_number', read_only=True, default=None)
+
+    def get_has_invoice(self, obj):
+        return hasattr(obj, 'invoice') and obj.invoice is not None
 
     class Meta:
         model = Stay

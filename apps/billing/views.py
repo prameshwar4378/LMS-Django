@@ -249,6 +249,11 @@ class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
         # Check or generate invoice record
         invoice = getattr(stay, 'invoice', None)
         if not invoice:
+            if stay.status != Stay.Status.CHECKED_OUT and not stay.actual_checkout_date:
+                return Response({
+                    'detail': 'Invoice can only be generated after checkout is completed.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             inv_number = f"{settings_obj.invoice_prefix or 'INV-'}{stay.stay_number.replace('STAY-', '')}"
             invoice, _ = Invoice.objects.get_or_create(
                 stay=stay,
