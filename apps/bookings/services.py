@@ -110,9 +110,13 @@ def validate_booking_payload(data, user=None, instance=None, is_walkin=False):
     # Past Booking Validation (Rule #5)
     if not is_walkin and not instance:
         # Buffer of 15 minutes for real-time form submission delay
-        if dt_in < (now_tz - datetime.timedelta(minutes=15)):
-            errors['check_in_date'] = ["Booking check-in time cannot be in the past."]
+        if dt_in.date() < now_tz.date():
+            errors['check_in_date'] = ["Booking check-in date cannot be in the past."]
             return None, errors
+        elif dt_in.date() == now_tz.date() and dt_in < (now_tz - datetime.timedelta(minutes=15)):
+            # Same-day reservation booked after standard check-in time (e.g. 12:00 PM):
+            # Auto-align check-in datetime to current time so same-day evening bookings succeed smoothly
+            dt_in = now_tz
 
     # Maximum Advance Booking Period (Rule #8)
     max_adv_days = getattr(settings_obj, 'max_advance_booking_days', 90) or 90
