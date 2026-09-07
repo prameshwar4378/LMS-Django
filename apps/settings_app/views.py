@@ -13,6 +13,17 @@ class SettingsViewSet(viewsets.ModelViewSet):
         user = getattr(self.request, 'user', None)
         if not user or not user.is_authenticated:
             return None
+        if user.is_superuser:
+            prop_id = self.request.query_params.get('property') or (
+                self.request.data.get('property') if hasattr(self.request, 'data') and hasattr(self.request.data, 'get') else None
+            )
+            if prop_id:
+                prop = Property.objects.filter(id=prop_id).first()
+                if prop:
+                    return prop
+            if hasattr(user, 'property') and user.property:
+                return user.property
+            return Property.objects.first()
         return getattr(user, 'property', None)
 
     def get_queryset(self):
@@ -48,15 +59,15 @@ class SettingsViewSet(viewsets.ModelViewSet):
         if prop:
             # Sync core fields back to property model
             if 'lodge_name' in request.data:
-                prop.name = saved_obj.lodge_name
+                prop.name = (saved_obj.lodge_name or '')[:200]
             if 'address' in request.data:
                 prop.address = saved_obj.address
             if 'phone' in request.data:
-                prop.owner_phone = saved_obj.phone
+                prop.owner_phone = (saved_obj.phone or '')[:30]
             if 'email' in request.data:
-                prop.owner_email = saved_obj.email
+                prop.owner_email = (saved_obj.email or '')[:254]
             if 'gst_number' in request.data:
-                prop.gstin = saved_obj.gst_number
+                prop.gstin = (saved_obj.gst_number or '')[:50]
             prop.save()
         return Response(serializer.data)
 

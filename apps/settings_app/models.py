@@ -3,22 +3,22 @@ from django.db import models
 class Settings(models.Model):
     lodge_name = models.CharField(max_length=200, default="Lodge Management System")
     logo = models.ImageField(upload_to="lodge/", blank=True, null=True)
-    address = models.TextField(default="123 Main Street, Station Road, City")
-    phone = models.CharField(max_length=50, default="+91 98765 43210")
-    email = models.EmailField(default="info@lodgemanagement.com")
-    website = models.CharField(max_length=100, default="www.lodgemanagement.com")
-    gst_number = models.CharField(max_length=50, default="27AAAAA0000A1Z5")
+    address = models.TextField(default="123 Main Street, Station Road, City", blank=True)
+    phone = models.CharField(max_length=50, default="+91 98765 43210", blank=True)
+    email = models.EmailField(default="info@lodgemanagement.com", blank=True)
+    website = models.CharField(max_length=100, default="www.lodgemanagement.com", blank=True)
+    gst_number = models.CharField(max_length=50, default="", blank=True)
     
-    currency = models.CharField(max_length=10, default="₹")
+    currency = models.CharField(max_length=10, default="₹", blank=True)
     tax_enabled = models.BooleanField(default=True)
     tax_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=12.00)
     
     default_checkin_time = models.TimeField(default="12:00:00")
     default_checkout_time = models.TimeField(default="11:00:00")
     
-    invoice_prefix = models.CharField(max_length=20, default="INV-")
-    booking_prefix = models.CharField(max_length=20, default="BK-")
-    stay_prefix = models.CharField(max_length=20, default="STAY-")
+    invoice_prefix = models.CharField(max_length=20, default="INV-", blank=True)
+    booking_prefix = models.CharField(max_length=20, default="BK-", blank=True)
+    stay_prefix = models.CharField(max_length=20, default="STAY-", blank=True)
 
     # Configurable Rules
     min_stay_duration_hours = models.IntegerField(default=1)
@@ -55,7 +55,9 @@ class Settings(models.Model):
     whatsapp_api_key = models.CharField(max_length=255, blank=True, default="", help_text="WhatsApp Gateway Token / Key (optional)")
 
     # Petty Cash Limits & Manager Governance
-    manager_override_pin = models.CharField(max_length=20, default="1234", help_text="Manager PIN for approving high expenses")
+    manager_override_pin = models.CharField(max_length=20, default="1234", blank=True, help_text="Manager PIN for approving high expenses")
+    daily_petty_cash_cap = models.DecimalField(max_digits=10, decimal_places=2, default=5000.00, blank=True, null=True, help_text="Maximum aggregate petty cash allowed per day/shift across property")
+    max_cash_expense_without_approval = models.DecimalField(max_digits=10, decimal_places=2, default=1000.00, blank=True, null=True, help_text="Maximum cash expense without requiring manager PIN authorization")
 
     property = models.OneToOneField(
         'settings_app.Property',
