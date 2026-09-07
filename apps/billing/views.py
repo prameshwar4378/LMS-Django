@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction, IntegrityError
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -7,7 +7,7 @@ from django.http import HttpResponse
 from .models import ChargeType, ExtraCharge, Payment, Invoice
 from .serializers import ChargeTypeSerializer, ExtraChargeSerializer, PaymentSerializer, InvoiceSerializer
 from apps.stays.models import Stay
-from apps.billing.services import calculate_stay_bill
+from apps.billing.services import calculate_stay_bill, generate_unique_invoice_number, generate_unique_payment_number
 from apps.settings_app.models import Settings
 from apps.settings_app.tenant_views import TenantScopedViewSetMixin
 
@@ -247,27 +247,33 @@ class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
         bill = calculate_stay_bill(stay)
         
         # Check or generate invoice record
-        invoice = getattr(stay, 'invoice', None)
+        invoice = getattr(stay, 'invoice', None) or Invoice.objects.filter(stay=stay).first()
         if not invoice:
             if stay.status != Stay.Status.CHECKED_OUT and not stay.actual_checkout_date:
                 return Response({
                     'detail': 'Invoice can only be generated after checkout is completed.'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            inv_number = f"{settings_obj.invoice_prefix or 'INV-'}{stay.stay_number.replace('STAY-', '')}"
-            invoice, _ = Invoice.objects.get_or_create(
-                stay=stay,
-                defaults={
-                    'property': prop,
-                    'invoice_number': inv_number,
-                    'subtotal': bill['subtotal'],
-                    'discount': bill['discount_amount'],
-                    'tax': bill['tax_amount'],
-                    'grand_total': bill['grand_total'],
-                    'paid_amount': bill['total_paid'],
-                    'balance': bill['balance'],
-                }
-            )
+            inv_number = generate_unique_invoice_number(prop, settings_obj.invoice_prefix)
+            for attempt in range(10):
+                try:
+                    with transaction.atomic():
+                        invoice, _ = Invoice.objects.get_or_create(
+                            stay=stay,
+                            defaults={
+                                'property': prop,
+                                'invoice_number': inv_number,
+                                'subtotal': bill.get('gross_subtotal', bill.get('subtotal', 0)),
+                                'discount': bill.get('discount_amount', 0),
+                                'tax': bill.get('gst_amount', bill.get('tax_amount', 0)),
+                                'grand_total': bill.get('grand_total', 0),
+                                'paid_amount': bill.get('total_paid', 0),
+                                'balance': bill.get('balance', 0),
+                            }
+                        )
+                    break
+                except IntegrityError:
+                    inv_number = generate_unique_invoice_number(prop, settings_obj.invoice_prefix)
 
         invoice_data = self.get_serializer(invoice).data
         return Response({

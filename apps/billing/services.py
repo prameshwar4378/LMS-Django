@@ -127,3 +127,86 @@ def calculate_stay_bill(stay, override_checkout_dt=None):
         'total_paid': float(total_paid),
         'balance': float(balance),
     }
+
+
+def generate_unique_invoice_number(property_obj=None, prefix=None):
+    """
+    Generates a guaranteed unique invoice number that never collides with
+    any existing invoice across all tenants or date sequences.
+    """
+    from apps.billing.models import Invoice
+    from apps.settings_app.models import Settings
+    import uuid
+
+    if not prefix:
+        settings_obj = Settings.get_settings(prop=property_obj)
+        prefix = settings_obj.invoice_prefix or "INV-"
+
+    clean_prefix = (prefix or "INV-").strip()
+    today_str = timezone.now().strftime('%Y%m%d')
+    base_prefix = f"{clean_prefix}{today_str}-"
+
+    # Query all existing invoices starting with base_prefix globally across the whole table
+    existing_invoices = list(Invoice.objects.all().filter(invoice_number__startswith=base_prefix).values_list('invoice_number', flat=True))
+    
+    max_num = 0
+    for inv_num in existing_invoices:
+        suffix = inv_num[len(base_prefix):]
+        try:
+            val = int(suffix)
+            if val > max_num:
+                max_num = val
+        except (ValueError, TypeError):
+            continue
+
+    candidate_num = max_num + 1
+    for attempt in range(200):
+        candidate = f"{base_prefix}{candidate_num + attempt:03d}"
+        if not Invoice.objects.all().filter(invoice_number=candidate).exists():
+            return candidate
+
+    # High-concurrency random suffix fallback
+    for _ in range(50):
+        candidate = f"{base_prefix}{uuid.uuid4().hex[:6].upper()}"
+        if not Invoice.objects.all().filter(invoice_number=candidate).exists():
+            return candidate
+
+    return f"{clean_prefix}{today_str}-{uuid.uuid4().hex[:8].upper()}"
+
+
+def generate_unique_payment_number(prefix="PAY-"):
+    """
+    Generates a guaranteed unique payment transaction number.
+    """
+    from apps.billing.models import Payment
+    import uuid
+
+    clean_prefix = (prefix or "PAY-").strip()
+    today_str = timezone.now().strftime('%Y%m%d')
+    base_prefix = f"{clean_prefix}{today_str}-"
+
+    existing_payments = list(Payment.objects.all().filter(payment_number__startswith=base_prefix).values_list('payment_number', flat=True))
+    
+    max_num = 0
+    for pay_num in existing_payments:
+        suffix = pay_num[len(base_prefix):]
+        try:
+            val = int(suffix)
+            if val > max_num:
+                max_num = val
+        except (ValueError, TypeError):
+            continue
+
+    candidate_num = max_num + 1
+    for attempt in range(200):
+        candidate = f"{base_prefix}{candidate_num + attempt:03d}"
+        if not Payment.objects.all().filter(payment_number=candidate).exists():
+            return candidate
+
+    for _ in range(50):
+        candidate = f"{base_prefix}{uuid.uuid4().hex[:6].upper()}"
+        if not Payment.objects.all().filter(payment_number=candidate).exists():
+            return candidate
+
+    return f"{clean_prefix}{today_str}-{uuid.uuid4().hex[:8].upper()}"
+

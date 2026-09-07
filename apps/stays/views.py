@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.utils import timezone
 from decimal import Decimal
@@ -10,6 +10,7 @@ import uuid
 from .models import Stay, StayGuest
 from .serializers import StaySerializer, StayGuestSerializer
 from .services import calculate_stay_bill, validate_checkout
+from apps.billing.services import generate_unique_invoice_number, generate_unique_payment_number
 from apps.customers.models import Customer
 from apps.rooms.models import Room
 from apps.rooms.services import check_room_availability
@@ -505,34 +506,30 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         stay.save()
 
         # 3. Handle checkout payment if provided
+        # 3. Handle checkout payment if provided
         payment_amount = request.data.get('payment_amount')
         if payment_amount and float(payment_amount) > 0:
-            today_str = datetime.date.today().strftime('%Y%m%d')
-            pay_prefix = "PAY-"
-            payment_number = None
-            for attempt in range(50):
-                pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-                p_num = f"{pay_prefix}{today_str}-{pay_count:03d}"
-                if not Payment.objects.filter(payment_number=p_num).exists():
-                    payment_number = p_num
-                    break
-            if not payment_number:
-                payment_number = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
             from apps.shifts.services import get_active_shift_for_user
             user_shift = get_active_shift_for_user(request.user)
 
-            Payment.objects.create(
-                property=stay.property,
-                payment_number=payment_number,
-                stay=stay,
-                amount=payment_amount,
-                payment_method=request.data.get('payment_method', 'CASH'),
-                transaction_reference=request.data.get('transaction_reference', 'Checkout Payment'),
-                received_by=request.user,
-                shift=user_shift,
-                notes='Final checkout payment'
-            )
+            pay_number = generate_unique_payment_number("PAY-")
+            for _ in range(10):
+                try:
+                    with transaction.atomic():
+                        Payment.objects.create(
+                            property=stay.property,
+                            payment_number=pay_number,
+                            stay=stay,
+                            amount=payment_amount,
+                            payment_method=request.data.get('payment_method', 'CASH'),
+                            transaction_reference=request.data.get('transaction_reference', 'Checkout Payment'),
+                            received_by=request.user,
+                            shift=user_shift,
+                            notes='Final checkout payment'
+                        )
+                    break
+                except IntegrityError:
+                    pay_number = generate_unique_payment_number("PAY-")
 
         # Recalculate bill after payment
         final_bill = calculate_stay_bill(stay, actual_checkout_dt)
@@ -552,7 +549,6 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         stay.status = Stay.Status.CHECKED_OUT
         stay.save()
 
-
         # 5. Update Room Status (AVAILABLE / CLEANING / MAINTENANCE)
         room = stay.room
         room_next_status = request.data.get('room_status', Room.Status.CLEANING)
@@ -567,22 +563,42 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         # 7. Generate Invoice (Rule #66)
         settings_obj = Settings.get_settings(prop=stay.property)
         inv_prefix = settings_obj.invoice_prefix or "INV-"
-        inv_count = Invoice.objects.filter(invoice_number__startswith=f"{inv_prefix}{now.strftime('%Y%m%d')}").count() + 1
-        inv_number = f"{inv_prefix}{now.strftime('%Y%m%d')}-{inv_count:03d}"
 
-        invoice, _ = Invoice.objects.update_or_create(
-            stay=stay,
-            defaults={
-                'property': stay.property,
-                'invoice_number': inv_number,
-                'subtotal': final_bill['gross_subtotal'],
-                'discount': final_bill['discount_amount'],
-                'tax': final_bill['gst_amount'],
-                'grand_total': final_bill['grand_total'],
-                'paid_amount': final_bill['total_paid'],
-                'balance': final_bill['balance'],
-            }
-        )
+        # Check if an invoice already exists for this stay
+        existing_invoice = getattr(stay, 'invoice', None) or Invoice.objects.filter(stay=stay).first()
+        if existing_invoice and existing_invoice.invoice_number:
+            # Preserve existing invoice number if not conflicting with another stay's invoice
+            if not Invoice.objects.all().filter(invoice_number=existing_invoice.invoice_number).exclude(id=existing_invoice.id).exists():
+                inv_number = existing_invoice.invoice_number
+            else:
+                inv_number = generate_unique_invoice_number(stay.property, inv_prefix)
+        else:
+            inv_number = generate_unique_invoice_number(stay.property, inv_prefix)
+
+        # Resilient creation / update with savepoint retry to guarantee no UNIQUE constraint failure
+        invoice = None
+        for attempt in range(10):
+            try:
+                with transaction.atomic():
+                    invoice, _ = Invoice.objects.update_or_create(
+                        stay=stay,
+                        defaults={
+                            'property': stay.property,
+                            'invoice_number': inv_number,
+                            'subtotal': final_bill.get('gross_subtotal', final_bill.get('subtotal', 0)),
+                            'discount': final_bill.get('discount_amount', 0),
+                            'tax': final_bill.get('gst_amount', final_bill.get('tax_amount', 0)),
+                            'grand_total': final_bill.get('grand_total', 0),
+                            'paid_amount': final_bill.get('total_paid', 0),
+                            'balance': final_bill.get('balance', 0),
+                        }
+                    )
+                break
+            except IntegrityError:
+                inv_number = generate_unique_invoice_number(stay.property, inv_prefix)
+
+        if not invoice:
+            invoice = getattr(stay, 'invoice', None) or Invoice.objects.filter(stay=stay).first()
 
         return Response({
             'success': True,
