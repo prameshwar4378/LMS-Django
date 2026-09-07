@@ -29,6 +29,8 @@ class CustomerSerializer(serializers.ModelSerializer):
 
 class CustomerHistorySerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
+    is_checked_in = serializers.SerializerMethodField(read_only=True)
+    active_stay = serializers.SerializerMethodField(read_only=True)
     stays = serializers.SerializerMethodField(read_only=True)
     bookings = serializers.SerializerMethodField(read_only=True)
     transactions = serializers.SerializerMethodField(read_only=True)
@@ -41,9 +43,35 @@ class CustomerHistorySerializer(serializers.ModelSerializer):
         model = Customer
         fields = '__all__'
 
+    def get_is_checked_in(self, obj):
+        return obj.stays.filter(status='CHECKED_IN').exists()
+
+    def get_active_stay(self, obj):
+        active = obj.stays.filter(status='CHECKED_IN').select_related('room', 'room__room_type').order_by('-created_at').first()
+        if not active:
+            return None
+        return {
+            'id': active.id,
+            'stay_number': active.stay_number,
+            'room_id': active.room.id if active.room else None,
+            'room_number': active.room.room_number if active.room else 'N/A',
+            'room_type': active.room.room_type.name if active.room and active.room.room_type else 'Standard',
+            'check_in_date': active.check_in_date,
+            'expected_checkout_date': active.expected_checkout_date,
+        }
+
     def get_bookings(self, obj):
         res = []
-        for b in obj.bookings.all().select_related('room', 'room__room_type').order_by('-created_at'):
+        for b in obj.bookings.all().select_related('room', 'room__room_type').prefetch_related('stays').order_by('-created_at'):
+            b_status = b.status
+            # If linked stay is checked out, booking is completed
+            linked_stays = list(b.stays.all())
+            if linked_stays and all(s.status == 'CHECKED_OUT' for s in linked_stays):
+                if b_status == 'CHECKED_IN':
+                    b_status = 'COMPLETED'
+                    b.status = 'COMPLETED'
+                    b.save(update_fields=['status'])
+
             res.append({
                 'id': b.id,
                 'booking_number': b.booking_number,
@@ -60,7 +88,7 @@ class CustomerHistorySerializer(serializers.ModelSerializer):
                 'discount_type': b.discount_type,
                 'discount_value': float(b.discount_value or 0),
                 'advance_amount': float(b.advance_amount or 0),
-                'status': b.status,
+                'status': b_status,
                 'notes': b.notes or '',
                 'created_at': b.created_at,
             })
@@ -100,19 +128,32 @@ class CustomerHistorySerializer(serializers.ModelSerializer):
     def get_stays(self, obj):
         from apps.billing.services import calculate_stay_bill
         result = []
-        for stay in obj.stays.all().order_by('-created_at'):
+        for stay in obj.stays.all().select_related('room', 'room__room_type').order_by('-created_at'):
             bill = calculate_stay_bill(stay)
             raw_bal = bill['balance']
             pending_bal = max(0.0, raw_bal)
             credit_bal = abs(raw_bal) if raw_bal < 0 else 0.0
 
+            stay_status = stay.status
+            if stay.actual_checkout_date and stay_status != 'CHECKED_OUT':
+                stay_status = 'CHECKED_OUT'
+                stay.status = 'CHECKED_OUT'
+                stay.save(update_fields=['status'])
+
             result.append({
                 'id': stay.id,
                 'stay_number': stay.stay_number,
+                'room_id': stay.room.id if stay.room else None,
                 'room_number': stay.room.room_number if stay.room else 'N/A',
+                'room_type': stay.room.room_type.name if stay.room and stay.room.room_type else 'Standard',
                 'check_in_date': stay.check_in_date,
+                'check_in_time': str(stay.check_in_time) if stay.check_in_time else '12:00',
+                'expected_checkout_date': stay.expected_checkout_date,
+                'expected_checkout_time': str(stay.expected_checkout_time) if stay.expected_checkout_time else '11:00',
+                'actual_checkout_date': stay.actual_checkout_date,
+                'actual_checkout_time': str(stay.actual_checkout_time) if stay.actual_checkout_time else None,
                 'checkout_date': stay.actual_checkout_date or stay.expected_checkout_date,
-                'status': stay.status,
+                'status': stay_status,
                 'grand_total': bill['grand_total'],
                 'total_paid': bill['total_paid'],
                 'balance': pending_bal,
