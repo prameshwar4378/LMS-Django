@@ -133,10 +133,6 @@ class PaymentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                     remaining_to_deduct -= deduct_adv
 
                 if remaining_to_deduct > 0:
-                    import datetime, uuid
-                    from apps.billing.models import Payment
-                    today_str = datetime.date.today().strftime('%Y%m%d')
-                    pay_prefix = "PAY-"
                     for item in overpaid_stays:
                         if remaining_to_deduct <= 0:
                             break
@@ -144,25 +140,22 @@ class PaymentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                         st_credit = item['credit']
                         draw_amt = min(st_credit, remaining_to_deduct)
 
-                        payment_number = None
-                        for attempt in range(50):
-                            pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-                            p_num = f"{pay_prefix}{today_str}-{pay_count:03d}"
-                            if not Payment.objects.filter(payment_number=p_num).exists():
-                                payment_number = p_num
+                        for _ in range(10):
+                            payment_number = generate_unique_payment_number("PAY-")
+                            try:
+                                with transaction.atomic():
+                                    Payment.objects.create(
+                                        payment_number=payment_number,
+                                        stay=st,
+                                        amount=-Decimal(str(draw_amt)),
+                                        payment_method='OTHER',
+                                        transaction_reference='WALLET_TRANSFER_OUT',
+                                        received_by=request.user if request.user and request.user.is_authenticated else None,
+                                        notes=f'Wallet credit transfer of ₹{draw_amt:.2f} to settle stay #{stay.stay_number} dues'
+                                    )
                                 break
-                        if not payment_number:
-                            payment_number = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
-                        Payment.objects.create(
-                            payment_number=payment_number,
-                            stay=st,
-                            amount=-Decimal(str(draw_amt)),
-                            payment_method='OTHER',
-                            transaction_reference='WALLET_TRANSFER_OUT',
-                            received_by=request.user if request.user and request.user.is_authenticated else None,
-                            notes=f'Wallet credit transfer of ₹{draw_amt:.2f} to settle stay #{stay.stay_number} dues'
-                        )
+                            except IntegrityError:
+                                continue
                         remaining_to_deduct -= draw_amt
 
                 # Create a mutable copy of request data and apply mutations

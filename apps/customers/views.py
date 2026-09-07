@@ -1,10 +1,12 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.db import transaction, IntegrityError
 from django.db.models import Q
 from .models import Customer, CustomerDocument
 from .serializers import CustomerSerializer, CustomerHistorySerializer, CustomerDocumentSerializer
 from apps.settings_app.tenant_views import TenantScopedViewSetMixin
+from apps.billing.services import generate_unique_payment_number
 
 class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     queryset = Customer.objects.all().prefetch_related('documents').order_by('-created_at')
@@ -293,8 +295,6 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
                 # 2. Deduct remaining from overpaid stays by creating negative adjustment payments
                 if remaining_to_deduct > 0:
-                    today_str = datetime.date.today().strftime('%Y%m%d')
-                    pay_prefix = "PAY-"
                     for item in overpaid_stays:
                         if remaining_to_deduct <= 0:
                             break
@@ -302,26 +302,23 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                         st_credit = item['credit']
                         draw_amt = min(st_credit, remaining_to_deduct)
 
-                        payment_number = None
-                        for attempt in range(50):
-                            pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-                            p_num = f"{pay_prefix}{today_str}-{pay_count:03d}"
-                            if not Payment.objects.filter(payment_number=p_num).exists():
-                                payment_number = p_num
+                        for _ in range(10):
+                            payment_number = generate_unique_payment_number("PAY-")
+                            try:
+                                with transaction.atomic():
+                                    Payment.objects.create(
+                                        property=cust_prop,
+                                        payment_number=payment_number,
+                                        stay=st,
+                                        amount=-Decimal(str(draw_amt)),
+                                        payment_method='OTHER',
+                                        transaction_reference='WALLET_TRANSFER_OUT',
+                                        received_by=request.user if request.user and request.user.is_authenticated else None,
+                                        notes=f'Wallet credit transfer of ₹{draw_amt:.2f} to settle customer stay dues'
+                                    )
                                 break
-                        if not payment_number:
-                            payment_number = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
-                        Payment.objects.create(
-                            property=cust_prop,
-                            payment_number=payment_number,
-                            stay=st,
-                            amount=-Decimal(str(draw_amt)),
-                            payment_method='OTHER',
-                            transaction_reference='WALLET_TRANSFER_OUT',
-                            received_by=request.user if request.user and request.user.is_authenticated else None,
-                            notes=f'Wallet credit transfer of ₹{draw_amt:.2f} to settle customer stay dues'
-                        )
+                            except IntegrityError:
+                                continue
                         remaining_to_deduct -= draw_amt
 
                 payment_method = 'OTHER'
@@ -346,9 +343,6 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             remaining_payment = amount_to_pay
             payments_created = []
 
-            today_str = datetime.date.today().strftime('%Y%m%d')
-            pay_prefix = "PAY-"
-
             for item in pending_stays:
                 if remaining_payment <= 0:
                     break
@@ -357,31 +351,31 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
                 alloc_amount = min(remaining_payment, stay_bal)
 
-                payment_number = None
-                for attempt in range(50):
-                    pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-                    p_num = f"{pay_prefix}{today_str}-{pay_count:03d}"
-                    if not Payment.objects.filter(payment_number=p_num).exists():
-                        payment_number = p_num
+                pay = None
+                for _ in range(10):
+                    payment_number = generate_unique_payment_number("PAY-")
+                    try:
+                        with transaction.atomic():
+                            pay = Payment.objects.create(
+                                property=cust_prop,
+                                payment_number=payment_number,
+                                stay=stay,
+                                amount=alloc_amount,
+                                payment_method=payment_method,
+                                transaction_reference=transaction_reference or f'Customer Settlement — Stay #{stay.stay_number}',
+                                received_by=request.user if request.user and request.user.is_authenticated else None,
+                                notes=f"{notes} (Allocated {alloc_amount:.2f} to Stay #{stay.stay_number})"
+                            )
                         break
-                if not payment_number:
-                    payment_number = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
+                    except IntegrityError:
+                        continue
 
-                pay = Payment.objects.create(
-                    property=cust_prop,
-                    payment_number=payment_number,
-                    stay=stay,
-                    amount=alloc_amount,
-                    payment_method=payment_method,
-                    transaction_reference=transaction_reference or f'Customer Settlement — Stay #{stay.stay_number}',
-                    received_by=request.user if request.user and request.user.is_authenticated else None,
-                    notes=f"{notes} (Allocated {alloc_amount:.2f} to Stay #{stay.stay_number})"
-                )
-                payments_created.append({
-                    'payment_number': pay.payment_number,
-                    'stay_number': stay.stay_number,
-                    'allocated_amount': alloc_amount
-                })
+                if pay:
+                    payments_created.append({
+                        'payment_number': pay.payment_number,
+                        'stay_number': stay.stay_number,
+                        'allocated_amount': alloc_amount
+                    })
 
                 remaining_payment -= alloc_amount
 
@@ -391,32 +385,32 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 customer.advance_credit += Decimal(str(remaining_payment))
                 customer.save()
 
-                payment_number = None
-                for attempt in range(50):
-                    pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-                    p_num = f"{pay_prefix}{today_str}-{pay_count:03d}"
-                    if not Payment.objects.filter(payment_number=p_num).exists():
-                        payment_number = p_num
+                adv_pay = None
+                for _ in range(10):
+                    payment_number = generate_unique_payment_number("PAY-")
+                    try:
+                        with transaction.atomic():
+                            adv_pay = Payment.objects.create(
+                                property=cust_prop,
+                                payment_number=payment_number,
+                                customer=customer,
+                                stay=None,
+                                amount=remaining_payment,
+                                payment_method=payment_method,
+                                transaction_reference=transaction_reference or 'CUSTOMER_ADVANCE_DEPOSIT',
+                                received_by=request.user if request.user and request.user.is_authenticated else None,
+                                notes=f"{notes} (Advance Wallet Deposit)" if notes else "Direct Customer Advance Wallet Deposit"
+                            )
                         break
-                if not payment_number:
-                    payment_number = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
+                    except IntegrityError:
+                        continue
 
-                adv_pay = Payment.objects.create(
-                    property=cust_prop,
-                    payment_number=payment_number,
-                    customer=customer,
-                    stay=None,
-                    amount=remaining_payment,
-                    payment_method=payment_method,
-                    transaction_reference=transaction_reference or 'CUSTOMER_ADVANCE_DEPOSIT',
-                    received_by=request.user if request.user and request.user.is_authenticated else None,
-                    notes=f"{notes} (Advance Wallet Deposit)" if notes else "Direct Customer Advance Wallet Deposit"
-                )
-                payments_created.append({
-                    'payment_number': adv_pay.payment_number,
-                    'stay_number': 'Wallet Deposit',
-                    'allocated_amount': remaining_payment
-                })
+                if adv_pay:
+                    payments_created.append({
+                        'payment_number': adv_pay.payment_number,
+                        'stay_number': 'Wallet Deposit',
+                        'allocated_amount': remaining_payment
+                    })
 
         msg = f"Successfully recorded payment of ₹{amount_to_pay:.2f}."
         if payments_created:
@@ -484,8 +478,6 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         with transaction.atomic():
             remaining_refund = refund_amount
-            today_str = datetime.date.today().strftime('%Y%m%d')
-            pay_prefix = "PAY-"
 
             # 1. Deduct from customer.advance_credit first if available
             adv_credit_float = float(customer.advance_credit or 0)
@@ -495,26 +487,23 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 customer.save()
                 
                 # Log negative payment transaction for the refund
-                payment_number = None
-                for attempt in range(50):
-                    pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-                    p_num = f"{pay_prefix}{today_str}-{pay_count:03d}"
-                    if not Payment.objects.filter(payment_number=p_num).exists():
-                        payment_number = p_num
+                for _ in range(10):
+                    payment_number = generate_unique_payment_number("PAY-")
+                    try:
+                        with transaction.atomic():
+                            Payment.objects.create(
+                                payment_number=payment_number,
+                                customer=customer,
+                                stay=None,
+                                amount=-Decimal(str(deduct_adv)),
+                                payment_method=payment_method,
+                                transaction_reference=transaction_reference or 'WALLET_CREDIT_REFUND',
+                                received_by=request.user if request.user and request.user.is_authenticated else None,
+                                notes=f"{notes} (Refunded ₹{deduct_adv:.2f} to guest via {payment_method})"
+                            )
                         break
-                if not payment_number:
-                    payment_number = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
-                Payment.objects.create(
-                    payment_number=payment_number,
-                    customer=customer,
-                    stay=None,
-                    amount=-Decimal(str(deduct_adv)),
-                    payment_method=payment_method,
-                    transaction_reference=transaction_reference or 'WALLET_CREDIT_REFUND',
-                    received_by=request.user if request.user and request.user.is_authenticated else None,
-                    notes=f"{notes} (Refunded ₹{deduct_adv:.2f} to guest via {payment_method})"
-                )
+                    except IntegrityError:
+                        continue
                 remaining_refund -= deduct_adv
 
             # 2. If additional refund required, draw from overpaid stays
@@ -526,26 +515,23 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                     st_credit = item['credit']
                     draw_amt = min(st_credit, remaining_refund)
 
-                    payment_number = None
-                    for attempt in range(50):
-                        pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-                        p_num = f"{pay_prefix}{today_str}-{pay_count:03d}"
-                        if not Payment.objects.filter(payment_number=p_num).exists():
-                            payment_number = p_num
+                    for _ in range(10):
+                        payment_number = generate_unique_payment_number("PAY-")
+                        try:
+                            with transaction.atomic():
+                                Payment.objects.create(
+                                    payment_number=payment_number,
+                                    customer=customer,
+                                    stay=st,
+                                    amount=-Decimal(str(draw_amt)),
+                                    payment_method=payment_method,
+                                    transaction_reference=transaction_reference or 'STAY_OVERPAYMENT_REFUND',
+                                    received_by=request.user if request.user and request.user.is_authenticated else None,
+                                    notes=f"{notes} (Refunded ₹{draw_amt:.2f} stay overpayment to guest via {payment_method})"
+                                )
                             break
-                    if not payment_number:
-                        payment_number = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
-                    Payment.objects.create(
-                        payment_number=payment_number,
-                        customer=customer,
-                        stay=st,
-                        amount=-Decimal(str(draw_amt)),
-                        payment_method=payment_method,
-                        transaction_reference=transaction_reference or 'STAY_OVERPAYMENT_REFUND',
-                        received_by=request.user if request.user and request.user.is_authenticated else None,
-                        notes=f"{notes} (Refunded ₹{draw_amt:.2f} stay overpayment to guest via {payment_method})"
-                    )
+                        except IntegrityError:
+                            continue
                     remaining_refund -= draw_amt
 
         return Response({

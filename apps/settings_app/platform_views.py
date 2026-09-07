@@ -413,6 +413,11 @@ class PlatformPropertyViewSet(viewsets.ViewSet):
         if not branch_code:
             count = parent.branches.count() + 1
             branch_code = f"{parent.code}-BR{count}"
+            for i in range(100):
+                cand = f"{parent.code}-BR{count + i}"
+                if not Property.objects.filter(code__iexact=cand).exists():
+                    branch_code = cand
+                    break
 
         if Property.objects.filter(code__iexact=branch_code.strip()).exists():
             return Response({'error': f'Branch code "{branch_code}" is already in use.'}, status=status.HTTP_400_BAD_REQUEST)

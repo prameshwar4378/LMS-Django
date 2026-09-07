@@ -143,6 +143,8 @@ def generate_unique_invoice_number(property_obj=None, prefix=None):
         prefix = settings_obj.invoice_prefix or "INV-"
 
     clean_prefix = (prefix or "INV-").strip()
+    if not clean_prefix.endswith('-'):
+        clean_prefix += '-'
     today_str = timezone.now().strftime('%Y%m%d')
     base_prefix = f"{clean_prefix}{today_str}-"
 
@@ -182,6 +184,8 @@ def generate_unique_payment_number(prefix="PAY-"):
     import uuid
 
     clean_prefix = (prefix or "PAY-").strip()
+    if not clean_prefix.endswith('-'):
+        clean_prefix += '-'
     today_str = timezone.now().strftime('%Y%m%d')
     base_prefix = f"{clean_prefix}{today_str}-"
 
@@ -209,4 +213,132 @@ def generate_unique_payment_number(prefix="PAY-"):
             return candidate
 
     return f"{clean_prefix}{today_str}-{uuid.uuid4().hex[:8].upper()}"
+
+
+def generate_unique_stay_number(property_obj=None, prefix=None):
+    """
+    Generates a guaranteed unique stay number that never collides across tenants or dates.
+    """
+    from apps.stays.models import Stay
+    from apps.settings_app.models import Settings
+    import uuid
+
+    if not prefix:
+        settings_obj = Settings.get_settings(prop=property_obj)
+        prefix = settings_obj.stay_prefix or "STAY-"
+
+    clean_prefix = (prefix or "STAY-").strip()
+    if not clean_prefix.endswith('-'):
+        clean_prefix += '-'
+    today_str = timezone.now().strftime('%Y%m%d')
+    base_prefix = f"{clean_prefix}{today_str}-"
+
+    existing_numbers = list(Stay.objects.all().filter(stay_number__startswith=base_prefix).values_list('stay_number', flat=True))
+    
+    max_num = 0
+    for s_num in existing_numbers:
+        suffix = s_num[len(base_prefix):]
+        try:
+            val = int(suffix)
+            if val > max_num:
+                max_num = val
+        except (ValueError, TypeError):
+            continue
+
+    candidate_num = max_num + 1
+    for attempt in range(200):
+        candidate = f"{base_prefix}{candidate_num + attempt:03d}"
+        if not Stay.objects.all().filter(stay_number=candidate).exists():
+            return candidate
+
+    for _ in range(50):
+        candidate = f"{base_prefix}{uuid.uuid4().hex[:6].upper()}"
+        if not Stay.objects.all().filter(stay_number=candidate).exists():
+            return candidate
+
+    return f"{clean_prefix}{today_str}-{uuid.uuid4().hex[:8].upper()}"
+
+
+def generate_unique_booking_number(property_obj=None, prefix=None):
+    """
+    Generates a guaranteed unique booking reservation number.
+    """
+    from apps.bookings.models import Booking
+    from apps.settings_app.models import Settings
+    import uuid
+
+    if not prefix:
+        settings_obj = Settings.get_settings(prop=property_obj)
+        prefix = settings_obj.booking_prefix or "BK-"
+
+    clean_prefix = (prefix or "BK-").strip()
+    if not clean_prefix.endswith('-'):
+        clean_prefix += '-'
+    today_str = timezone.now().strftime('%Y%m%d')
+    base_prefix = f"{clean_prefix}{today_str}-"
+
+    existing_numbers = list(Booking.objects.all().filter(booking_number__startswith=base_prefix).values_list('booking_number', flat=True))
+    
+    max_num = 0
+    for b_num in existing_numbers:
+        suffix = b_num[len(base_prefix):]
+        try:
+            val = int(suffix)
+            if val > max_num:
+                max_num = val
+        except (ValueError, TypeError):
+            continue
+
+    candidate_num = max_num + 1
+    for attempt in range(200):
+        candidate = f"{base_prefix}{candidate_num + attempt:03d}"
+        if not Booking.objects.all().filter(booking_number=candidate).exists():
+            return candidate
+
+    for _ in range(50):
+        candidate = f"{base_prefix}{uuid.uuid4().hex[:6].upper()}"
+        if not Booking.objects.all().filter(booking_number=candidate).exists():
+            return candidate
+
+    return f"{clean_prefix}{today_str}-{uuid.uuid4().hex[:8].upper()}"
+
+
+def generate_unique_shift_number(property_obj=None, prefix=None):
+    """
+    Generates a guaranteed unique staff shift session number.
+    """
+    from apps.shifts.models import Shift
+    import uuid
+
+    clean_prefix = (prefix or "SHIFT-").strip()
+    if not clean_prefix.endswith('-'):
+        clean_prefix += '-'
+    today_str = timezone.now().strftime('%Y%m%d')
+    base_prefix = f"{clean_prefix}{today_str}-"
+
+    existing_numbers = list(Shift.objects.all().filter(shift_number__startswith=base_prefix).values_list('shift_number', flat=True))
+    
+    max_num = 0
+    for s_num in existing_numbers:
+        suffix = s_num[len(base_prefix):]
+        try:
+            val = int(suffix)
+            if val > max_num:
+                max_num = val
+        except (ValueError, TypeError):
+            continue
+
+    candidate_num = max_num + 1
+    for attempt in range(200):
+        candidate = f"{base_prefix}{candidate_num + attempt:03d}"
+        if not Shift.objects.all().filter(shift_number=candidate).exists():
+            return candidate
+
+    for _ in range(50):
+        candidate = f"{base_prefix}{uuid.uuid4().hex[:6].upper()}"
+        if not Shift.objects.all().filter(shift_number=candidate).exists():
+            return candidate
+
+    return f"{clean_prefix}{today_str}-{uuid.uuid4().hex[:8].upper()}"
+
 

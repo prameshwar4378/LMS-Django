@@ -10,7 +10,7 @@ import uuid
 from .models import Stay, StayGuest
 from .serializers import StaySerializer, StayGuestSerializer
 from .services import calculate_stay_bill, validate_checkout
-from apps.billing.services import generate_unique_invoice_number, generate_unique_payment_number
+from apps.billing.services import generate_unique_invoice_number, generate_unique_payment_number, generate_unique_stay_number
 from apps.customers.models import Customer
 from apps.rooms.models import Room
 from apps.rooms.services import check_room_availability
@@ -173,65 +173,58 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         # 3. Generate Unique Stay Number
         settings_obj = Settings.get_settings(prop=user_prop)
         prefix = settings_obj.stay_prefix or "STAY-"
-        today_str = datetime.date.today().strftime('%Y%m%d')
-        stay_number = None
-        for attempt in range(50):
-            count = Stay.objects.filter(stay_number__startswith=f"{prefix}{today_str}").count() + 1 + attempt
-            s_num = f"{prefix}{today_str}-{count:03d}"
-            if not Stay.objects.filter(stay_number=s_num).exists():
-                stay_number = s_num
+        stay = None
+        for _ in range(10):
+            stay_number = generate_unique_stay_number(user_prop, prefix)
+            try:
+                with transaction.atomic():
+                    stay = Stay.objects.create(
+                        property=user_prop,
+                        stay_number=stay_number,
+                        room=room,
+                        primary_customer=customer,
+                        check_in_date=dt_in.date(),
+                        check_in_time=dt_in.time(),
+                        expected_checkout_date=validated_attrs['expected_checkout_date'],
+                        expected_checkout_time=validated_attrs['expected_checkout_time'],
+                        adults=validated_attrs['adults'],
+                        children=validated_attrs['children'],
+                        room_rate=validated_attrs['room_rate'],
+                        discount_type=validated_attrs['discount_type'],
+                        discount_value=validated_attrs['discount_value'],
+                        chargeable_nights=validated_attrs.get('chargeable_nights'),
+                        notes=data.get('notes', '') or '',
+                        status=Stay.Status.CHECKED_IN,
+                        created_by=user
+                    )
                 break
-        if not stay_number:
-            stay_number = f"{prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
-        stay = Stay.objects.create(
-            property=user_prop,
-            stay_number=stay_number,
-            room=room,
-            primary_customer=customer,
-            check_in_date=dt_in.date(),
-            check_in_time=dt_in.time(),
-            expected_checkout_date=validated_attrs['expected_checkout_date'],
-            expected_checkout_time=validated_attrs['expected_checkout_time'],
-            adults=validated_attrs['adults'],
-            children=validated_attrs['children'],
-            room_rate=validated_attrs['room_rate'],
-            discount_type=validated_attrs['discount_type'],
-            discount_value=validated_attrs['discount_value'],
-            chargeable_nights=validated_attrs.get('chargeable_nights'),
-            notes=data.get('notes', '') or '',
-            status=Stay.Status.CHECKED_IN,
-            created_by=user
-        )
+            except IntegrityError:
+                continue
 
         # 4. Initial Payment if provided
         advance_payment = data.get('advance_payment')
         if advance_payment and float(advance_payment) > 0:
-            pay_prefix = "PAY-"
-            payment_number = None
-            for attempt in range(50):
-                pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-                p_num = f"{pay_prefix}{today_str}-{pay_count:03d}"
-                if not Payment.objects.filter(payment_number=p_num).exists():
-                    payment_number = p_num
-                    break
-            if not payment_number:
-                payment_number = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
             from apps.shifts.services import get_active_shift_for_user
             user_shift = get_active_shift_for_user(user)
 
-            Payment.objects.create(
-                property=user_prop,
-                payment_number=payment_number,
-                stay=stay,
-                amount=advance_payment,
-                payment_method=data.get('payment_method', 'CASH'),
-                transaction_reference=data.get('transaction_reference', 'Walk-in Payment'),
-                received_by=user,
-                shift=user_shift,
-                notes='Initial Walk-in Advance Payment'
-            )
+            for _ in range(10):
+                payment_number = generate_unique_payment_number("PAY-")
+                try:
+                    with transaction.atomic():
+                        Payment.objects.create(
+                            property=user_prop,
+                            payment_number=payment_number,
+                            stay=stay,
+                            amount=advance_payment,
+                            payment_method=data.get('payment_method', 'CASH'),
+                            transaction_reference=data.get('transaction_reference', 'Walk-in Payment'),
+                            received_by=user,
+                            shift=user_shift,
+                            notes='Initial Walk-in Advance Payment'
+                        )
+                    break
+                except IntegrityError:
+                    continue
 
         # Automatic Customer Advance Credit Wallet Application
         from apps.billing.services import calculate_stay_bill
@@ -256,27 +249,23 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             wallet_to_apply = min(total_wallet_available, due_amount if due_amount > 0 else total_wallet_available)
 
             if wallet_to_apply > 0:
-                pay_prefix = "PAY-"
-                payment_number = None
-                for attempt in range(50):
-                    pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-                    p_num = f"{pay_prefix}{today_str}-{pay_count:03d}"
-                    if not Payment.objects.filter(payment_number=p_num).exists():
-                        payment_number = p_num
+                for _ in range(10):
+                    payment_number = generate_unique_payment_number("PAY-")
+                    try:
+                        with transaction.atomic():
+                            Payment.objects.create(
+                                property=user_prop,
+                                payment_number=payment_number,
+                                stay=stay,
+                                amount=wallet_to_apply,
+                                payment_method='OTHER',
+                                transaction_reference='CUSTOMER_ADVANCE_WALLET',
+                                received_by=user,
+                                notes=f'Automatically applied ₹{wallet_to_apply:.2f} from Customer Advance Credit Wallet'
+                            )
                         break
-                if not payment_number:
-                    payment_number = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
-                Payment.objects.create(
-                    property=user_prop,
-                    payment_number=payment_number,
-                    stay=stay,
-                    amount=wallet_to_apply,
-                    payment_method='OTHER',
-                    transaction_reference='CUSTOMER_ADVANCE_WALLET',
-                    received_by=user,
-                    notes=f'Automatically applied ₹{wallet_to_apply:.2f} from Customer Advance Credit Wallet'
-                )
+                    except IntegrityError:
+                        continue
 
                 remaining_to_deduct = wallet_to_apply
                 adv_credit_float = float(customer.advance_credit or 0)
@@ -294,25 +283,22 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                         st_credit = item['credit']
                         draw_amt = min(st_credit, remaining_to_deduct)
 
-                        p_num_transfer = None
-                        for attempt in range(50):
-                            pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-                            p_n = f"{pay_prefix}{today_str}-{pay_count:03d}"
-                            if not Payment.objects.filter(payment_number=p_n).exists():
-                                p_num_transfer = p_n
+                        for _ in range(10):
+                            p_num_transfer = generate_unique_payment_number("PAY-")
+                            try:
+                                with transaction.atomic():
+                                    Payment.objects.create(
+                                        payment_number=p_num_transfer,
+                                        stay=st,
+                                        amount=-Decimal(str(draw_amt)),
+                                        payment_method='OTHER',
+                                        transaction_reference='WALLET_TRANSFER_OUT',
+                                        received_by=user,
+                                        notes=f'Wallet credit transfer of ₹{draw_amt:.2f} to Stay #{stay.stay_number}'
+                                    )
                                 break
-                        if not p_num_transfer:
-                            p_num_transfer = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
-                        Payment.objects.create(
-                            payment_number=p_num_transfer,
-                            stay=st,
-                            amount=-Decimal(str(draw_amt)),
-                            payment_method='OTHER',
-                            transaction_reference='WALLET_TRANSFER_OUT',
-                            received_by=user,
-                            notes=f'Wallet credit transfer of ₹{draw_amt:.2f} to Stay #{stay.stay_number}'
-                        )
+                            except IntegrityError:
+                                continue
                         remaining_to_deduct -= draw_amt
 
         # Update Room status to OCCUPIED

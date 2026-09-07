@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Q, Sum
 from django.utils import timezone
 from decimal import Decimal
@@ -22,6 +22,7 @@ from .services import (
 from .notifications import trigger_shift_closing_notifications
 from apps.settings_app.models import Settings
 from apps.billing.models import Payment
+from apps.billing.services import generate_unique_shift_number
 
 def ensure_default_drawers(prop=None):
     if prop:
@@ -197,32 +198,29 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                     }, status=status.HTTP_400_BAD_REQUEST)
 
         # 4. Generate Unique Shift Number (SHIFT-YYYYMMDD-XXX)
-        today_str = datetime.date.today().strftime('%Y%m%d')
         prefix = "SHIFT-"
-        shift_number = None
-        for attempt in range(50):
-            count = Shift.objects.filter(shift_number__startswith=f"{prefix}{today_str}").count() + 1 + attempt
-            s_num = f"{prefix}{today_str}-{count:03d}"
-            if not Shift.objects.filter(shift_number=s_num).exists():
-                shift_number = s_num
-                break
-        if not shift_number:
-            shift_number = f"{prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
         opening_notes = request.data.get('opening_notes', '')
 
         # 5. Create Shift record
-        shift = Shift.objects.create(
-            property=user_prop,
-            shift_number=shift_number,
-            cash_drawer=drawer,
-            user=user,
-            opened_at=timezone.now(),
-            opening_balance=opening_balance,
-            expected_cash=opening_balance,
-            status=Shift.Status.OPEN,
-            opening_notes=opening_notes
-        )
+        shift = None
+        for _ in range(10):
+            shift_number = generate_unique_shift_number(user_prop, prefix)
+            try:
+                with transaction.atomic():
+                    shift = Shift.objects.create(
+                        property=user_prop,
+                        shift_number=shift_number,
+                        cash_drawer=drawer,
+                        user=user,
+                        opened_at=timezone.now(),
+                        opening_balance=opening_balance,
+                        expected_cash=opening_balance,
+                        status=Shift.Status.OPEN,
+                        opening_notes=opening_notes
+                    )
+                break
+            except IntegrityError:
+                continue
 
         # 5. Link any accepted Handover if provided
         handover_id = request.data.get('handover_id')
@@ -963,34 +961,31 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 drawer = CashDrawer.objects.filter(id=drawer_id).first()
 
             # Generate Unique Shift Number
-            today_str = datetime.date.today().strftime('%Y%m%d')
             prefix = "SHIFT-"
-            shift_number = None
-            for attempt in range(50):
-                count = Shift.objects.filter(shift_number__startswith=f"{prefix}{today_str}").count() + 1 + attempt
-                s_num = f"{prefix}{today_str}-{count:03d}"
-                if not Shift.objects.filter(shift_number=s_num).exists():
-                    shift_number = s_num
-                    break
-            if not shift_number:
-                shift_number = f"{prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
-
             opening_notes = request.data.get('opening_notes') or f"Opened via accepted handover from {handover.from_user.get_full_name() or handover.from_user.username} (Shift #{handover.from_shift.shift_number if handover.from_shift else 'N/A'})"
 
             now = timezone.now()
             target_property = (handover.from_shift.property if handover.from_shift else None) or user_prop
-            new_shift = Shift.objects.create(
-                property=target_property,
-                shift_number=shift_number,
-                cash_drawer=drawer,
-                user=user,
-                opened_at=now,
-                opening_balance=handover.amount,
-                expected_cash=handover.amount,
-                status=Shift.Status.OPEN,
-                opening_notes=opening_notes,
-                updated_by=user
-            )
+            new_shift = None
+            for _ in range(10):
+                shift_number = generate_unique_shift_number(target_property, prefix)
+                try:
+                    with transaction.atomic():
+                        new_shift = Shift.objects.create(
+                            property=target_property,
+                            shift_number=shift_number,
+                            cash_drawer=drawer,
+                            user=user,
+                            opened_at=now,
+                            opening_balance=handover.amount,
+                            expected_cash=handover.amount,
+                            status=Shift.Status.OPEN,
+                            opening_notes=opening_notes,
+                            updated_by=user
+                        )
+                    break
+                except IntegrityError:
+                    continue
 
             handover.to_shift = new_shift
             handover.is_opening_handover = True

@@ -38,24 +38,23 @@ class BookingSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        import uuid
+        from apps.billing.services import generate_unique_booking_number
+        from django.db import transaction, IntegrityError
         validated_data.pop('chargeable_nights', None)
         settings_obj = Settings.get_settings()
         prefix = settings_obj.booking_prefix or "BK-"
-        today_str = datetime.date.today().strftime('%Y%m%d')
-        
-        # Ensure unique booking_number under concurrent/batch group requests
-        for attempt in range(50):
-            count = Booking.objects.filter(booking_number__startswith=f"{prefix}{today_str}").count() + 1 + attempt
-            b_num = f"{prefix}{today_str}-{count:03d}"
-            if not Booking.objects.filter(booking_number=b_num).exists():
-                validated_data['booking_number'] = b_num
-                break
-        else:
-            validated_data['booking_number'] = f"{prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
 
         if 'request' in self.context and self.context['request'].user.is_authenticated:
             validated_data['created_by'] = self.context['request'].user
+
+        prop = validated_data.get('property')
+        for attempt in range(10):
+            validated_data['booking_number'] = generate_unique_booking_number(prop, prefix)
+            try:
+                with transaction.atomic():
+                    return super().create(validated_data)
+            except IntegrityError:
+                continue
 
         return super().create(validated_data)
 

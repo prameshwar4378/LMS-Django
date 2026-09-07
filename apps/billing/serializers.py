@@ -124,17 +124,9 @@ class PaymentSerializer(serializers.ModelSerializer):
         return obj.shift.shift_number if obj.shift else None
 
     def create(self, validated_data):
-        import uuid
+        from apps.billing.services import generate_unique_payment_number
+        from django.db import transaction, IntegrityError
         pay_prefix = "PAY-"
-        today_str = datetime.date.today().strftime('%Y%m%d')
-        for attempt in range(50):
-            pay_count = Payment.objects.filter(payment_number__startswith=f"{pay_prefix}{today_str}").count() + 1 + attempt
-            p_num = f"{pay_prefix}{today_str}-{pay_count:03d}"
-            if not Payment.objects.filter(payment_number=p_num).exists():
-                validated_data['payment_number'] = p_num
-                break
-        else:
-            validated_data['payment_number'] = f"{pay_prefix}{today_str}-{uuid.uuid4().hex[:4].upper()}"
 
         if 'request' in self.context and self.context['request'].user.is_authenticated:
             user = self.context['request'].user
@@ -143,6 +135,15 @@ class PaymentSerializer(serializers.ModelSerializer):
             if not validated_data.get('created_by'):
                 validated_data['created_by'] = user
             validated_data['updated_by'] = user
+
+        for _ in range(10):
+            validated_data['payment_number'] = generate_unique_payment_number(pay_prefix)
+            try:
+                with transaction.atomic():
+                    return super().create(validated_data)
+            except IntegrityError:
+                continue
+
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
