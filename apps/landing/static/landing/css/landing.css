@@ -659,11 +659,50 @@ h1, h2, h3, h4, h5, h6 {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Standalone column cards should fill column height */
+.col > .glass-card,
+[class*="col-"] > .glass-card:only-child {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* Contact Page Specific Touchpoint Card */
+.contact-touchpoint-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 18px 22px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-decoration: none;
+  margin-bottom: 14px;
   position: relative;
   overflow: hidden;
+  height: auto !important;
+}
+
+.contact-touchpoint-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  background: rgba(19, 28, 46, 0.9);
+}
+
+.contact-touchpoint-card .icon-box-gold {
+  transition: transform 0.3s ease;
+}
+
+.contact-touchpoint-card:hover .icon-box-gold {
+  transform: scale(1.08);
 }
 
 /* Mouse-tracking Radial Spotlight */

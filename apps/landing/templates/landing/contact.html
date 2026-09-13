@@ -33,7 +33,7 @@
 </section>
 
 <div class="container py-5">
-  <div class="row g-5">
+  <div class="row g-4 align-items-start">
     
     <!-- ========================================================================
          LEFT COLUMN: Direct Touchpoints & Coverage Hub
@@ -47,8 +47,8 @@
       </p>
 
       <!-- Phone Card -->
-      <a href="tel:{{ phone }}" class="glass-card p-4 mb-3 text-decoration-none d-flex align-items-center gap-3">
-        <div class="icon-box-gold mb-0 flex-shrink-0" style="width: 52px; height: 52px; font-size: 1.4rem;">
+      <a href="tel:{{ phone }}" class="contact-touchpoint-card">
+        <div class="icon-box-gold mb-0 flex-shrink-0" style="width: 48px; height: 48px; font-size: 1.3rem;">
           <i class="bi bi-telephone-fill"></i>
         </div>
         <div>
@@ -61,8 +61,8 @@
       </a>
 
       <!-- WhatsApp Card -->
-      <a href="{{ whatsapp_url }}" target="_blank" class="glass-card p-4 mb-3 text-decoration-none d-flex align-items-center gap-3" style="border-color: rgba(37, 211, 102, 0.35);">
-        <div class="icon-box-gold mb-0 flex-shrink-0" style="width: 52px; height: 52px; font-size: 1.4rem; background: rgba(37, 211, 102, 0.15); color: #25d366; border-color: rgba(37, 211, 102, 0.35);">
+      <a href="{{ whatsapp_url }}" target="_blank" rel="noopener noreferrer" class="contact-touchpoint-card" style="border-color: rgba(37, 211, 102, 0.35);">
+        <div class="icon-box-gold mb-0 flex-shrink-0" style="width: 48px; height: 48px; font-size: 1.3rem; background: rgba(37, 211, 102, 0.15); color: #25d366; border-color: rgba(37, 211, 102, 0.35);">
           <i class="bi bi-whatsapp"></i>
         </div>
         <div>
@@ -75,8 +75,8 @@
       </a>
 
       <!-- Email Card -->
-      <a href="mailto:{{ email }}" class="glass-card p-4 mb-3 text-decoration-none d-flex align-items-center gap-3">
-        <div class="icon-box-gold mb-0 flex-shrink-0" style="width: 52px; height: 52px; font-size: 1.4rem; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3);">
+      <a href="mailto:{{ email }}" class="contact-touchpoint-card">
+        <div class="icon-box-gold mb-0 flex-shrink-0" style="width: 48px; height: 48px; font-size: 1.3rem; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3);">
           <i class="bi bi-envelope-fill"></i>
         </div>
         <div>
@@ -87,8 +87,8 @@
       </a>
 
       <!-- Corporate Web Card -->
-      <a href="{{ website }}" target="_blank" class="glass-card p-4 mb-4 text-decoration-none d-flex align-items-center gap-3">
-        <div class="icon-box-gold mb-0 flex-shrink-0" style="width: 52px; height: 52px; font-size: 1.4rem;">
+      <a href="{{ website }}" target="_blank" rel="noopener noreferrer" class="contact-touchpoint-card">
+        <div class="icon-box-gold mb-0 flex-shrink-0" style="width: 48px; height: 48px; font-size: 1.3rem;">
           <i class="bi bi-globe2"></i>
         </div>
         <div>
@@ -99,7 +99,7 @@
       </a>
 
       <!-- Pan-India Support Hub & Coverage Card -->
-      <div class="glass-card p-4 mb-4">
+      <div class="contact-touchpoint-card d-block p-4 mt-3" style="cursor: default;">
         <div class="d-flex align-items-center gap-2 mb-2">
           <i class="bi bi-geo-alt-fill text-warning fs-5"></i>
           <h4 class="text-white fs-6 fw-bold mb-0">Pan-India Support & Headquarters</h4>
@@ -116,7 +116,7 @@
       </div>
 
       <!-- Rapid Onboarding Box -->
-      <div class="p-3 rounded bg-dark border border-secondary border-opacity-25 text-secondary small">
+      <div class="p-3 rounded bg-dark border border-secondary border-opacity-25 text-secondary small mt-3">
         <strong class="text-white d-block mb-1">
           <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Rapid Onboarding Guarantee:
         </strong>
@@ -288,7 +288,7 @@
           <i class="bi bi-telephone-fill"></i>
           <span>Call Support: {{ phone_display }}</span>
         </a>
-        <a href="{{ whatsapp_url }}" target="_blank" class="btn-portal px-4 py-3 fs-6" style="border-color: #25d366; color: #25d366;">
+        <a href="{{ whatsapp_url }}" target="_blank" rel="noopener noreferrer" class="btn-portal px-4 py-3 fs-6" style="border-color: #25d366; color: #25d366;">
           <i class="bi bi-whatsapp"></i>
           <span>Start WhatsApp Chat</span>
         </a>
