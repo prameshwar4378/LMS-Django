@@ -2121,15 +2121,15 @@ class DashboardReportView(APIView):
             })
 
         # Recent Transactions
-        recent_pmts = pay_base.select_related('customer', 'stay', 'stay__room').order_by('-payment_date')[:10]
+        recent_pmts = pay_base.select_related('customer', 'stay', 'stay__room', 'booking', 'booking__customer', 'booking__room').order_by('-payment_date')[:10]
         recent_transactions = [{
             'id': p.id,
             'payment_number': p.payment_number,
             'amount': float(p.amount or 0),
             'payment_method': p.payment_method,
             'payment_date': p.payment_date.strftime('%Y-%m-%d %H:%M'),
-            'customer_name': p.customer.full_name if p.customer else 'Guest',
-            'room_number': p.stay.room.room_number if (p.stay and p.stay.room) else '—'
+            'customer_name': p.customer.full_name if p.customer else (p.booking.customer.full_name if p.booking and p.booking.customer else 'Guest'),
+            'room_number': (p.stay.room.room_number if (p.stay and p.stay.room) else (p.booking.room.room_number if (p.booking and p.booking.room) else '—'))
         } for p in recent_pmts]
 
         return Response({

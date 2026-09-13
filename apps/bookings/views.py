@@ -35,8 +35,8 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             if disc_float > 0:
                 require_perm(user, 'billing', 'can_give_discount', "You do not have permission to apply discounts.")
                 max_pct = get_perm_limit(user, 'billing', 'max_discount_percent', fallback=10.0)
-                disc_type = data.get('discount_type', 'PERCENT')
-                if disc_type == 'PERCENT' and disc_float > max_pct:
+                disc_type = data.get('discount_type', 'FIXED')
+                if disc_type in ['PERCENT', 'PERCENTAGE'] and disc_float > max_pct:
                     from rest_framework.exceptions import ValidationError
                     raise ValidationError({'discount_value': [f"Discount of {disc_float}% exceeds your role's allowed maximum limit of {max_pct}%."]})
 
@@ -72,7 +72,97 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         self._validate_booking_discount(request.user, request.data)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        user_prop = self.get_property_for_request()
+        if not user_prop:
+            room = serializer.validated_data.get('room')
+            if room and getattr(room, 'property', None):
+                user_prop = room.property
+            elif getattr(request.user, 'property', None):
+                user_prop = request.user.property
+        self.validate_tenant_integrity(serializer.validated_data, user_prop)
+        booking = serializer.save(property=user_prop)
+        cust_name = getattr(booking.customer, 'full_name', '')
+        room_num = getattr(booking.room, 'room_number', '')
+        adv_val = float(booking.advance_amount or 0.0)
+        raw_adv_input = request.data.get('advance_payment') or request.data.get('advance_amount')
+        try:
+            raw_adv = float(raw_adv_input) if raw_adv_input not in (None, '') else adv_val
+        except (ValueError, TypeError):
+            raw_adv = adv_val
+        excess_adv = getattr(booking, '_excess_advance', 0.0) or max(0.0, round(raw_adv - adv_val, 2))
+        excess_info = f" (+₹{excess_adv:,.2f} credited to guest wallet)" if excess_adv > 0 else ""
+        pay_info = f" - Received ₹{raw_adv:,.2f} advance payment via {request.data.get('payment_method') or 'CASH'}{excess_info}" if raw_adv > 0 else ""
+        booking._change_reason = f"Advance reservation created for Room {room_num} (Guest: {cust_name}){pay_info}."
+        booking.save()
+
+        # Handle Advance Payment creation
+        advance_amt = Decimal(str(booking.advance_amount or '0.00'))
+        payment_method = request.data.get('payment_method') or 'CASH'
+        if payment_method not in dict(Payment.PaymentMethod.choices):
+            payment_method = 'CASH'
+        transaction_ref = request.data.get('transaction_reference') or ''
+
+        user_shift = None
+        try:
+            from apps.shifts.services import get_active_shift_for_user
+            user_shift = get_active_shift_for_user(request.user, auto_create_in_single_mode=False)
+        except Exception:
+            pass
+
+        if advance_amt > Decimal('0.00'):
+            pay_created = False
+            for _ in range(10):
+                payment_number = generate_unique_payment_number("PAY-")
+                try:
+                    with transaction.atomic():
+                        pay = Payment(
+                            property=booking.property,
+                            payment_number=payment_number,
+                            booking=booking,
+                            customer=booking.customer,
+                            amount=advance_amt,
+                            payment_method=payment_method,
+                            transaction_reference=transaction_ref or f"Advance for Booking #{booking.booking_number}",
+                            received_by=request.user,
+                            created_by=request.user,
+                            updated_by=request.user,
+                            shift=user_shift,
+                            notes=f"Advance payment received for Booking #{booking.booking_number}"
+                        )
+                        pay._change_reason = f"Advance payment of ₹{advance_amt} received ({payment_method}) for Booking #{booking.booking_number} (Room {room_num})"
+                        pay.save()
+                        pay_created = True
+                        break
+                except IntegrityError:
+                    continue
+
+            if pay_created and user_shift:
+                from apps.shifts.models import ShiftAuditLog
+                try:
+                    ShiftAuditLog.objects.create(
+                        shift=user_shift,
+                        user=request.user,
+                        action='BOOKING_ADVANCE_COLLECTED',
+                        description=f"Collected ₹{advance_amt} advance ({payment_method}) for Booking #{booking.booking_number}",
+                        metadata={'booking_number': booking.booking_number, 'amount': str(advance_amt), 'payment_method': payment_method}
+                    )
+                except Exception:
+                    pass
+
+        # Handle Excess Advance Credit to Customer Wallet (Rule #33)
+        if excess_adv > 0 and booking.customer:
+            from apps.bookings.services import credit_excess_advance_to_wallet
+            credit_excess_advance_to_wallet(
+                customer=booking.customer,
+                excess_amount=excess_adv,
+                booking=booking,
+                property_obj=booking.property,
+                user=request.user,
+                shift=user_shift,
+                payment_method=payment_method,
+                transaction_ref=transaction_ref
+            )
+
         headers = self.get_success_headers(serializer.data)
         return Response({
             'success': True,
@@ -97,7 +187,81 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        user_prop = self.get_property_for_request()
+        self.validate_tenant_integrity(serializer.validated_data, user_prop)
+        booking = serializer.save()
+
+        # Track and sync advance amount changes with Payment ledger
+        if 'advance_amount' in request.data:
+            from django.db.models import Sum
+            new_advance = Decimal(str(booking.advance_amount or '0.00'))
+            total_recorded = booking.payments.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+            diff = new_advance - total_recorded
+
+            if diff != Decimal('0.00'):
+                payment_method = request.data.get('payment_method') or 'CASH'
+                if payment_method not in dict(Payment.PaymentMethod.choices):
+                    payment_method = 'CASH'
+                transaction_ref = request.data.get('transaction_reference') or ''
+
+                user_shift = None
+                try:
+                    from apps.shifts.services import get_active_shift_for_user
+                    user_shift = get_active_shift_for_user(request.user, auto_create_in_single_mode=False)
+                except Exception:
+                    pass
+
+                desc_type = "additional advance" if diff > 0 else "advance refund/adjustment"
+                for _ in range(10):
+                    payment_number = generate_unique_payment_number("PAY-")
+                    try:
+                        with transaction.atomic():
+                            Payment.objects.create(
+                                property=booking.property,
+                                payment_number=payment_number,
+                                booking=booking,
+                                customer=booking.customer,
+                                amount=diff,
+                                payment_method=payment_method,
+                                transaction_reference=transaction_ref or f"Booking #{booking.booking_number} Advance Adjustment",
+                                received_by=request.user,
+                                created_by=request.user,
+                                updated_by=request.user,
+                                shift=user_shift,
+                                notes=f"Booking #{booking.booking_number} {desc_type}: ₹{diff}"
+                            )
+                            break
+                    except IntegrityError:
+                        continue
+
+                if user_shift:
+                    from apps.shifts.models import ShiftAuditLog
+                    try:
+                        ShiftAuditLog.objects.create(
+                            shift=user_shift,
+                            user=request.user,
+                            action='BOOKING_ADVANCE_ADJUSTED',
+                            description=f"Adjusted advance by ₹{diff} ({payment_method}) for Booking #{booking.booking_number}",
+                            metadata={'booking_number': booking.booking_number, 'diff': str(diff), 'payment_method': payment_method}
+                        )
+                    except Exception:
+                        pass
+
+        # Handle Excess Advance Credit to Customer Wallet (Rule #33)
+        excess_adv = getattr(booking, '_excess_advance', 0.0) or 0.0
+        if excess_adv > 0 and booking.customer:
+            from apps.bookings.services import credit_excess_advance_to_wallet
+            credit_excess_advance_to_wallet(
+                customer=booking.customer,
+                excess_amount=excess_adv,
+                booking=booking,
+                property_obj=booking.property,
+                user=request.user,
+                shift=user_shift if 'user_shift' in locals() else None,
+                payment_method=request.data.get('payment_method') or 'CASH',
+                transaction_ref=request.data.get('transaction_reference') or ''
+            )
+
         return Response({
             'success': True,
             'message': 'Booking updated successfully.',
@@ -117,10 +281,44 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if not ok:
             return Response({'success': False, 'message': err, 'errors': {'status': [err]}}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Handle advance deposits on cancellation (refund or wallet credit)
+        action_opt = request.data.get('advance_handling') or request.data.get('action') or request.data.get('cancellation_action') or 'WALLET_CREDIT'
+        refund_method = request.data.get('refund_method') or request.data.get('payment_method')
+        amount_opt = request.data.get('refund_amount') or request.data.get('amount')
+        shift_id = request.data.get('shift') or request.data.get('shift_id')
+        shift_obj = None
+        if shift_id:
+            from apps.shifts.models import Shift
+            shift_obj = Shift.objects.filter(id=shift_id).first()
+
+        from apps.bookings.services import process_booking_cancellation_advance
+        adv_result = process_booking_cancellation_advance(
+            booking=booking,
+            user=request.user,
+            action=action_opt,
+            refund_method=refund_method,
+            amount=amount_opt,
+            shift=shift_obj,
+            notes=request.data.get('notes'),
+            transaction_ref=request.data.get('transaction_reference')
+        )
+
+        msg = f'Booking #{booking.booking_number} has been cancelled successfully.'
+        if adv_result['advance_amount'] > 0:
+            if adv_result['action'] == 'REFUND':
+                msg += f" Advance deposit of ₹{adv_result['advance_amount']:.2f} refunded via {adv_result.get('refund_method', 'CASH')}."
+            elif adv_result['action'] == 'WALLET_CREDIT':
+                msg += f" Advance deposit of ₹{adv_result['advance_amount']:.2f} credited to guest wallet."
+            elif adv_result['action'] == 'FORFEIT':
+                msg += f" Advance deposit of ₹{adv_result['advance_amount']:.2f} retained as cancellation fee."
+
+        data = self.get_serializer(booking).data
+        data['advance_handling'] = adv_result
+
         return Response({
             'success': True,
-            'message': f'Booking #{booking.booking_number} has been cancelled successfully.',
-            'data': self.get_serializer(booking).data
+            'message': msg,
+            'data': data
         })
 
     @action(detail=True, methods=['post'])
@@ -135,10 +333,33 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if not ok:
             return Response({'success': False, 'message': err, 'errors': {'status': [err]}}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Handle advance deposits on no-show (default is FORFEIT unless explicitly requested)
+        action_opt = request.data.get('advance_handling') or request.data.get('action') or 'FORFEIT'
+        from apps.bookings.services import process_booking_cancellation_advance
+        adv_result = process_booking_cancellation_advance(
+            booking=booking,
+            user=request.user,
+            action=action_opt,
+            refund_method=request.data.get('refund_method') or request.data.get('payment_method'),
+            amount=request.data.get('refund_amount') or request.data.get('amount'),
+            notes=request.data.get('notes'),
+            transaction_ref=request.data.get('transaction_reference')
+        )
+
+        msg = f'Booking #{booking.booking_number} marked as No Show.'
+        if adv_result['advance_amount'] > 0 and adv_result['action'] != 'FORFEIT':
+            if adv_result['action'] == 'WALLET_CREDIT':
+                msg += f" Advance deposit of ₹{adv_result['advance_amount']:.2f} credited to guest wallet."
+            elif adv_result['action'] == 'REFUND':
+                msg += f" Advance deposit of ₹{adv_result['advance_amount']:.2f} refunded via {adv_result.get('refund_method', 'CASH')}."
+
+        data = self.get_serializer(booking).data
+        data['advance_handling'] = adv_result
+
         return Response({
             'success': True,
-            'message': f'Booking #{booking.booking_number} marked as No Show.',
-            'data': self.get_serializer(booking).data
+            'message': msg,
+            'data': data
         })
 
     @action(detail=True, methods=['post'])
@@ -234,7 +455,7 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if not is_avail:
             return Response({
                 'success': False,
-                'message': f'Room is no longer available for check-in: {avail_err}',
+                'message': avail_err or 'Room is no longer available for check-in.',
                 'errors': {'room': [avail_err]}
             }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -286,10 +507,16 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             except IntegrityError:
                 continue
 
-        # Process advance payment if any
-        if booking.advance_amount and booking.advance_amount > 0:
+        # Link existing advance payments to the new stay, or create if legacy booking without payment record
+        existing_payments = booking.payments.all()
+        if existing_payments.exists():
+            for p in existing_payments:
+                if not p.stay:
+                    p.stay = stay
+                    p.save(update_fields=['stay'])
+        elif booking.advance_amount and booking.advance_amount > 0:
             from apps.shifts.services import get_active_shift_for_user
-            user_shift = get_active_shift_for_user(request.user)
+            user_shift = get_active_shift_for_user(request.user, auto_create_in_single_mode=False)
 
             for _ in range(10):
                 payment_number = generate_unique_payment_number("PAY-")
@@ -298,13 +525,17 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                         Payment.objects.create(
                             property=booking.property,
                             payment_number=payment_number,
+                            booking=booking,
+                            customer=booking.customer,
                             stay=stay,
                             amount=booking.advance_amount,
                             payment_method='CASH',
-                            transaction_reference='Advance Booking Payment',
+                            transaction_reference=f'Advance for Booking #{booking.booking_number}',
                             received_by=request.user,
+                            created_by=request.user,
+                            updated_by=request.user,
                             shift=user_shift,
-                            notes='Advance payment from booking'
+                            notes=f'Advance payment from booking #{booking.booking_number}'
                         )
                     break
                 except IntegrityError:
@@ -384,10 +615,18 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                             remaining_to_deduct -= draw_amt
 
         # Transition Booking & Update Room Status
+        adv_val = float(booking.advance_amount or 0)
+        pay_info = f" - Received ₹{adv_val:,.2f} advance payment" if adv_val > 0 else ""
+
         booking.status = Booking.Status.CHECKED_IN
+        booking._change_reason = f"Checked in to Room {target_room.room_number} as Stay #{stay.stay_number}{pay_info}."
         booking.save()
 
+        stay._change_reason = f"Checked in to Room {target_room.room_number} (Guest: {booking.customer.full_name}){pay_info}."
+        stay.save()
+
         target_room.status = Room.Status.OCCUPIED
+        target_room._change_reason = f"Check-in: Guest {booking.customer.full_name} checked into Room {target_room.room_number} (Stay #{stay.stay_number}){pay_info}."
         target_room.save()
 
         return Response({

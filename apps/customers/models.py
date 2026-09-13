@@ -1,5 +1,6 @@
 from django.db import models
 from apps.settings_app.tenant_models import TenantModel
+from simple_history.models import HistoricalRecords
 
 class Customer(TenantModel):
     class IDType(models.TextChoices):
@@ -41,11 +42,26 @@ class Customer(TenantModel):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
 
     @property
     def full_name(self):
         parts = [self.first_name, self.middle_name, self.last_name]
         return " ".join([p for p in parts if p]).strip()
+
+    def save(self, *args, **kwargs):
+        if not self.property_id:
+            try:
+                from apps.settings_app.tenant_views import get_active_property_for_request
+                from simple_history.models import HistoricalRecords
+                req = getattr(getattr(HistoricalRecords, 'context', None), 'request', None)
+                if req:
+                    prop = get_active_property_for_request(req)
+                    if prop:
+                        self.property = prop
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.full_name} ({self.mobile})"

@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'simple_history',
 
     # Local apps
     'apps.authentication',
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     'apps.billing',
     'apps.settings_app',
     'apps.shifts',
+    'apps.catalogue',
 ]
 
 AUTH_USER_MODEL = 'authentication.User'
@@ -51,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'simple_history.middleware.HistoryRequestMiddleware',
     'apps.settings_app.subscription_middleware.TenantSubscriptionMiddleware',
 ]
 

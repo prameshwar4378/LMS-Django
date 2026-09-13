@@ -180,7 +180,16 @@ class PaymentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         user = self.request.user if self.request.user and self.request.user.is_authenticated else None
         
         from apps.shifts.services import get_active_shift_for_user, log_shift_action
+        from apps.shifts.models import Shift
         shift = get_active_shift_for_user(user) if user else None
+        if not shift and user:
+            shift = Shift.objects.filter(user=user, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]).first()
+        if not shift:
+            user_prop = getattr(user, 'property', None)
+            stay_prop = getattr(stay, 'property', None) if stay else None
+            prop = user_prop or stay_prop
+            if prop:
+                shift = Shift.objects.filter(property=prop, status=Shift.Status.OPEN).first()
 
         payment = serializer.save(
             customer=customer,

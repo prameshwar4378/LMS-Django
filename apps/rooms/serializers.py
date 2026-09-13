@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import RoomType, Room
+from .models import RoomType, Room, RoomDeletionRequest
 
 class RoomTypeSerializer(serializers.ModelSerializer):
     room_count = serializers.IntegerField(source='rooms.count', read_only=True)
@@ -64,4 +64,31 @@ class RoomSerializer(serializers.ModelSerializer):
                     })
 
         return attrs
+
+
+class RoomDeletionRequestSerializer(serializers.ModelSerializer):
+    requested_by_name = serializers.SerializerMethodField()
+    requested_by_role = serializers.CharField(source='requested_by.role', read_only=True)
+    reviewed_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RoomDeletionRequest
+        fields = [
+            'id', 'property', 'room', 'room_number', 'room_type_name', 'floor',
+            'requested_by', 'requested_by_name', 'requested_by_role', 'reason',
+            'activity_summary', 'status', 'reviewed_by', 'reviewed_by_name',
+            'review_notes', 'reviewed_at', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'status', 'reviewed_by', 'reviewed_at', 'created_at', 'updated_at']
+
+    def get_requested_by_name(self, obj):
+        if not obj.requested_by:
+            return 'Staff'
+        return obj.requested_by.get_full_name() or obj.requested_by.username
+
+    def get_reviewed_by_name(self, obj):
+        if not obj.reviewed_by:
+            return None
+        return obj.reviewed_by.get_full_name() or obj.reviewed_by.username
+
 

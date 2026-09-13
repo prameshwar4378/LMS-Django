@@ -13,6 +13,29 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def create(self, request, *args, **kwargs):
+        mobile = request.data.get('mobile')
+        user_prop = self.get_property_for_request() or getattr(request.user, 'property', None)
+        if mobile and str(mobile).strip():
+            clean_mobile = str(mobile).strip()
+            cust_qs = Customer.objects.filter(mobile=clean_mobile)
+            if user_prop:
+                cust_qs = cust_qs.filter(property=user_prop)
+            existing = cust_qs.first()
+            if existing:
+                updated = False
+                for field in ['first_name', 'middle_name', 'last_name', 'email', 'address', 'id_type', 'id_number']:
+                    val = request.data.get(field)
+                    if val and not getattr(existing, field, None):
+                        setattr(existing, field, val)
+                        updated = True
+                if updated:
+                    existing.save()
+                serializer = self.get_serializer(existing)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return super().create(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = super().get_queryset()
         query = self.request.query_params.get('search', None)
@@ -280,6 +303,23 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                     'errors': {'amount': ['Insufficient wallet balance']}
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Resolve active shift for cashier / receptionist
+        user = request.user if request.user and request.user.is_authenticated else None
+        shift = None
+        shift_id = request.data.get('shift') or request.data.get('shift_id')
+        if shift_id:
+            from apps.shifts.models import Shift
+            shift = Shift.objects.filter(id=shift_id).first()
+        if not shift and user:
+            from apps.shifts.services import get_active_shift_for_user
+            shift = get_active_shift_for_user(user)
+            if not shift:
+                from apps.shifts.models import Shift
+                shift = Shift.objects.filter(user=user, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]).first()
+        if not shift and cust_prop:
+            from apps.shifts.models import Shift
+            shift = Shift.objects.filter(property=cust_prop, status=Shift.Status.OPEN).first()
+
         with transaction.atomic():
             if is_wallet_payment:
                 from decimal import Decimal
@@ -313,7 +353,9 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                                         amount=-Decimal(str(draw_amt)),
                                         payment_method='OTHER',
                                         transaction_reference='WALLET_TRANSFER_OUT',
-                                        received_by=request.user if request.user and request.user.is_authenticated else None,
+                                        received_by=user,
+                                        created_by=user,
+                                        updated_by=user,
                                         notes=f'Wallet credit transfer of ₹{draw_amt:.2f} to settle customer stay dues'
                                     )
                                 break
@@ -359,13 +401,26 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                             pay = Payment.objects.create(
                                 property=cust_prop,
                                 payment_number=payment_number,
+                                customer=customer,
                                 stay=stay,
+                                shift=shift if not is_wallet_payment else None,
                                 amount=alloc_amount,
                                 payment_method=payment_method,
                                 transaction_reference=transaction_reference or f'Customer Settlement — Stay #{stay.stay_number}',
-                                received_by=request.user if request.user and request.user.is_authenticated else None,
+                                received_by=user,
+                                created_by=user,
+                                updated_by=user,
                                 notes=f"{notes} (Allocated {alloc_amount:.2f} to Stay #{stay.stay_number})"
                             )
+                            if shift and not is_wallet_payment:
+                                from apps.shifts.services import log_shift_action
+                                log_shift_action(
+                                    shift,
+                                    user,
+                                    'PAYMENT_RECORDED',
+                                    f'Settlement payment #{payment_number} of ₹{alloc_amount:.2f} via {payment_method} recorded for Stay #{stay.stay_number}',
+                                    {'payment_id': pay.id, 'stay_id': stay.id, 'amount': float(alloc_amount), 'payment_method': payment_method}
+                                )
                         break
                     except IntegrityError:
                         continue
@@ -395,12 +450,24 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                                 payment_number=payment_number,
                                 customer=customer,
                                 stay=None,
+                                shift=shift if not is_wallet_payment else None,
                                 amount=remaining_payment,
                                 payment_method=payment_method,
                                 transaction_reference=transaction_reference or 'CUSTOMER_ADVANCE_DEPOSIT',
-                                received_by=request.user if request.user and request.user.is_authenticated else None,
+                                received_by=user,
+                                created_by=user,
+                                updated_by=user,
                                 notes=f"{notes} (Advance Wallet Deposit)" if notes else "Direct Customer Advance Wallet Deposit"
                             )
+                            if shift and not is_wallet_payment:
+                                from apps.shifts.services import log_shift_action
+                                log_shift_action(
+                                    shift,
+                                    user,
+                                    'PAYMENT_RECORDED',
+                                    f'Advance wallet deposit #{payment_number} of ₹{remaining_payment:.2f} via {payment_method} recorded for {customer.full_name}',
+                                    {'payment_id': adv_pay.id, 'customer_id': customer.id, 'amount': float(remaining_payment), 'payment_method': payment_method}
+                                )
                         break
                     except IntegrityError:
                         continue
@@ -476,6 +543,29 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 'errors': {'amount': [f'Amount exceeds available credit (₹{total_wallet_available:.2f})']}
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Resolve active receptionist / cashier shift and property
+        user = request.user if request.user and request.user.is_authenticated else None
+        from apps.shifts.services import get_active_shift_for_user, log_shift_action
+        from apps.shifts.models import Shift
+        from apps.settings_app.tenant_views import get_active_property_for_request
+
+        prop = getattr(customer, 'property', None) or get_active_property_for_request(request)
+        if not prop and user:
+            prop = getattr(user, 'property', None)
+
+        shift = None
+        shift_id = request.data.get('shift') or request.data.get('shift_id')
+        if shift_id:
+            shift = Shift.objects.filter(id=shift_id).first()
+        if not shift and user:
+            shift = get_active_shift_for_user(user)
+        if not shift and user:
+            shift = Shift.objects.filter(user=user, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]).first()
+        if not shift and prop:
+            shift = Shift.objects.filter(property=prop, status=Shift.Status.OPEN).first()
+
+        cust_display_name = customer.full_name or customer.first_name or "Guest"
+
         with transaction.atomic():
             remaining_refund = refund_amount
 
@@ -492,15 +582,34 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                     try:
                         with transaction.atomic():
                             Payment.objects.create(
+                                property=prop,
                                 payment_number=payment_number,
                                 customer=customer,
                                 stay=None,
+                                shift=shift,
                                 amount=-Decimal(str(deduct_adv)),
                                 payment_method=payment_method,
                                 transaction_reference=transaction_reference or 'WALLET_CREDIT_REFUND',
-                                received_by=request.user if request.user and request.user.is_authenticated else None,
+                                received_by=user,
+                                created_by=user,
+                                updated_by=user,
                                 notes=f"{notes} (Refunded ₹{deduct_adv:.2f} to guest via {payment_method})"
                             )
+                            if shift:
+                                log_shift_action(
+                                    shift,
+                                    user,
+                                    'WALLET_REFUND_RECORDED',
+                                    f'Wallet advance refund #{payment_number} of ₹{deduct_adv:.2f} via {payment_method} issued to guest {cust_display_name} by {user.get_full_name() or user.username if user else "Staff"}',
+                                    {
+                                        'payment_number': payment_number,
+                                        'customer_id': customer.id,
+                                        'amount': float(deduct_adv),
+                                        'payment_method': payment_method,
+                                        'refund_type': 'ADVANCE_CREDIT',
+                                        'user_id': user.id if user else None
+                                    }
+                                )
                         break
                     except IntegrityError:
                         continue
@@ -519,16 +628,38 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                         payment_number = generate_unique_payment_number("PAY-")
                         try:
                             with transaction.atomic():
+                                stay_prop = getattr(st, 'property', None) or prop
                                 Payment.objects.create(
+                                    property=stay_prop,
                                     payment_number=payment_number,
                                     customer=customer,
                                     stay=st,
+                                    shift=shift,
                                     amount=-Decimal(str(draw_amt)),
                                     payment_method=payment_method,
                                     transaction_reference=transaction_reference or 'STAY_OVERPAYMENT_REFUND',
-                                    received_by=request.user if request.user and request.user.is_authenticated else None,
+                                    received_by=user,
+                                    created_by=user,
+                                    updated_by=user,
                                     notes=f"{notes} (Refunded ₹{draw_amt:.2f} stay overpayment to guest via {payment_method})"
                                 )
+                                if shift:
+                                    log_shift_action(
+                                        shift,
+                                        user,
+                                        'WALLET_REFUND_RECORDED',
+                                        f'Stay overpayment refund #{payment_number} of ₹{draw_amt:.2f} via {payment_method} for Stay #{st.stay_number} issued to guest {cust_display_name} by {user.get_full_name() or user.username if user else "Staff"}',
+                                        {
+                                            'payment_number': payment_number,
+                                            'customer_id': customer.id,
+                                            'stay_id': st.id,
+                                            'stay_number': st.stay_number,
+                                            'amount': float(draw_amt),
+                                            'payment_method': payment_method,
+                                            'refund_type': 'STAY_OVERPAYMENT',
+                                            'user_id': user.id if user else None
+                                        }
+                                    )
                             break
                         except IntegrityError:
                             continue
@@ -536,11 +667,13 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         return Response({
             'success': True,
-            'message': f'Successfully refunded ₹{refund_amount:.2f} to guest via {payment_method}.',
+            'message': f'Successfully refunded ₹{refund_amount:.2f} to guest via {payment_method}.' + (f' Linked to shift #{shift.shift_number}.' if shift else ''),
             'data': {
                 'refunded_amount': refund_amount,
                 'payment_method': payment_method,
-                'remaining_wallet_credit': max(0.0, total_wallet_available - refund_amount)
+                'remaining_wallet_credit': max(0.0, total_wallet_available - refund_amount),
+                'shift_id': shift.id if shift else None,
+                'shift_number': shift.shift_number if shift else None
             }
         }, status=status.HTTP_200_OK)
 

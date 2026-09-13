@@ -192,19 +192,29 @@ def validate_booking_payload(data, user=None, instance=None, is_walkin=False):
     discounted_subtotal = max(0.0, subtotal - calculated_discount)
 
     # 6. GST & Grand Total Calculation
-    gst_percent = float(getattr(settings_obj, 'gst_percent', 18.0) or 18.0) if getattr(settings_obj, 'enable_gst', True) else 0.0
+    tax_enabled = getattr(settings_obj, 'tax_enabled', getattr(settings_obj, 'enable_gst', True))
+    if tax_enabled:
+        tax_pct = getattr(settings_obj, 'tax_percentage', getattr(settings_obj, 'gst_percent', 12.0))
+        gst_percent = float(tax_pct if tax_pct is not None else 0.0)
+    else:
+        gst_percent = 0.0
     gst_amount = round((discounted_subtotal * gst_percent) / 100.0, 2)
     grand_total_amount = round(discounted_subtotal + gst_amount, 2)
 
-    # 7. Advance Payment Validation (Rule #33)
+    # 7. Advance Payment Validation & Handling (Rule #33)
     advance = float(data.get('advance_payment') or data.get('advance_amount') or (instance.advance_amount if instance else 0) or 0)
     if advance < 0:
         errors['advance_amount'] = ["Advance payment cannot be negative."]
         return None, errors
 
-    # Cap advance to grand_total_amount if it slightly exceeds due to rounding
-    if advance > grand_total_amount and grand_total_amount > 0:
-        advance = grand_total_amount
+    # Prevent advance truncation:
+    # If advance exceeds grand total, cap the booking's direct advance allocation to grand_total_amount,
+    # and calculate the excess advance to be credited directly to the customer's wallet ledger.
+    excess_advance = 0.0
+    booking_advance = advance
+    if grand_total_amount > 0 and advance > grand_total_amount:
+        excess_advance = round(advance - grand_total_amount, 2)
+        booking_advance = grand_total_amount
 
     # 7. Room Availability Overlap Check (Rules #10, #11, #12, #13, #14, #16)
     is_avail, avail_err = check_room_availability(
@@ -230,10 +240,78 @@ def validate_booking_payload(data, user=None, instance=None, is_walkin=False):
         'room_rate': base_rate,
         'discount_type': discount_type,
         'discount_value': discount_val,
-        'advance_amount': advance,
+        'advance_amount': booking_advance,
+        'excess_advance': excess_advance,
         'chargeable_nights': validated_chargeable_nights,
     }
     return validated_attrs, None
+
+def credit_excess_advance_to_wallet(customer, excess_amount, booking=None, property_obj=None, user=None, shift=None, payment_method='CASH', transaction_ref=''):
+    """
+    Credits excess booking advance to customer's advance credit wallet
+    and records an audit-compliant Payment transaction in the cashier shift.
+    """
+    if not customer or float(excess_amount or 0) <= 0:
+        return None
+
+    from decimal import Decimal
+    from django.db import transaction, IntegrityError
+    from apps.billing.models import Payment
+    from apps.billing.services import generate_unique_payment_number
+
+    excess_dec = Decimal(str(round(float(excess_amount), 2)))
+    customer.advance_credit = (customer.advance_credit or Decimal('0.00')) + excess_dec
+    customer.save(update_fields=['advance_credit'])
+
+    prop = property_obj or getattr(booking, 'property', None) or getattr(customer, 'property', None)
+    payment_method = payment_method or 'CASH'
+    if payment_method not in dict(Payment.PaymentMethod.choices):
+        payment_method = 'CASH'
+
+    bk_num = getattr(booking, 'booking_number', '')
+    ref = transaction_ref or (f"Wallet Deposit from Booking #{bk_num}" if bk_num else "Customer Advance Wallet Deposit")
+    notes = f"Excess advance payment of ₹{excess_dec} from Booking #{bk_num} credited to guest wallet." if bk_num else f"Advance wallet deposit: ₹{excess_dec}"
+
+    pay = None
+    for _ in range(10):
+        payment_number = generate_unique_payment_number("PAY-")
+        try:
+            with transaction.atomic():
+                pay = Payment.objects.create(
+                    property=prop,
+                    payment_number=payment_number,
+                    booking=booking,
+                    customer=customer,
+                    stay=None,
+                    amount=excess_dec,
+                    payment_method=payment_method,
+                    transaction_reference=ref,
+                    received_by=user,
+                    created_by=user,
+                    updated_by=user,
+                    shift=shift,
+                    notes=notes
+                )
+                pay._change_reason = notes
+                pay.save()
+            break
+        except IntegrityError:
+            continue
+
+    if pay and shift:
+        from apps.shifts.models import ShiftAuditLog
+        try:
+            ShiftAuditLog.objects.create(
+                shift=shift,
+                user=user,
+                action='BOOKING_ADVANCE_COLLECTED',
+                description=f"Credited ₹{excess_dec} excess advance from Booking #{bk_num} to guest wallet",
+                metadata={'booking_number': bk_num, 'amount': str(excess_dec), 'customer_id': customer.id}
+            )
+        except Exception:
+            pass
+
+    return pay
 
 def transition_booking_status(booking, new_status):
     """
@@ -255,3 +333,169 @@ def transition_booking_status(booking, new_status):
     booking.status = new_status
     booking.save()
     return True, None
+
+
+def process_booking_cancellation_advance(
+    booking,
+    user=None,
+    action=None,
+    refund_method=None,
+    amount=None,
+    shift=None,
+    notes=None,
+    transaction_ref=None
+):
+    """
+    Handles advance deposit when a booking is cancelled or marked no-show.
+    Supported actions:
+      - 'WALLET_CREDIT': Credits advance to customer's advance_credit wallet.
+      - 'REFUND': Creates negative Payment record reversing the advance & links to active shift.
+      - 'FORFEIT': Retains advance deposit as cancellation fee (no wallet credit, no refund).
+    """
+    from decimal import Decimal
+    from django.db import transaction, models, IntegrityError
+    from apps.billing.models import Payment
+    from apps.billing.services import generate_unique_payment_number
+
+    # 1. Calculate total unrefunded advance amount
+    booking_adv = Decimal(str(booking.advance_amount or '0.00'))
+    pos_pays = booking.payments.filter(amount__gt=0).aggregate(tot=models.Sum('amount'))['tot'] or Decimal('0.00')
+    deposit_val = max(booking_adv, pos_pays)
+    
+    already_refunded = abs(booking.payments.filter(amount__lt=0).aggregate(tot=models.Sum('amount'))['tot'] or Decimal('0.00'))
+    refundable_advance = max(Decimal('0.00'), deposit_val - already_refunded)
+
+    if refundable_advance <= Decimal('0.00'):
+        return {
+            'advance_amount': 0.0,
+            'action': 'NONE',
+            'wallet_credit_added': 0.0,
+            'refund_payment_number': None,
+            'customer_wallet_balance': float(booking.customer.advance_credit) if booking.customer else 0.0,
+            'message': 'No advance deposit to process.'
+        }
+
+    # Override custom amount if specified
+    if amount is not None:
+        try:
+            custom_dec = Decimal(str(amount))
+            if Decimal('0.00') <= custom_dec <= refundable_advance:
+                refundable_advance = custom_dec
+        except (ValueError, TypeError):
+            pass
+
+    action_norm = (action or 'WALLET_CREDIT').upper().strip()
+    if action_norm not in ['WALLET_CREDIT', 'REFUND', 'FORFEIT']:
+        action_norm = 'WALLET_CREDIT'
+
+    customer = booking.customer
+    bk_num = booking.booking_number
+    cust_name = customer.full_name if customer else 'Guest'
+    user_name = (user.get_full_name() or user.username) if user else "Staff"
+
+    refund_pay = None
+    wallet_credit_added = Decimal('0.00')
+
+    # Resolve active shift if not passed
+    if not shift and user and user.is_authenticated:
+        from apps.shifts.services import get_active_shift_for_user
+        shift = get_active_shift_for_user(user)
+        if not shift:
+            from apps.shifts.models import Shift
+            shift = Shift.objects.filter(user=user, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]).first()
+        if not shift and booking.property:
+            from apps.shifts.models import Shift
+            shift = Shift.objects.filter(property=booking.property, status=Shift.Status.OPEN).first()
+
+    if action_norm == 'WALLET_CREDIT':
+        if customer and refundable_advance > Decimal('0.00'):
+            customer.advance_credit = (customer.advance_credit or Decimal('0.00')) + refundable_advance
+            customer.save(update_fields=['advance_credit'])
+            wallet_credit_added = refundable_advance
+
+            c_notes = f"\n[Cancellation] ₹{refundable_advance:.2f} advance deposit credited to guest wallet."
+            booking.notes = (booking.notes or "") + c_notes
+            booking._change_reason = f"Cancelled Booking #{bk_num}. Credited ₹{refundable_advance:.2f} advance to guest wallet."
+            booking.save(update_fields=['notes'])
+
+            if shift:
+                from apps.shifts.services import log_shift_action
+                try:
+                    log_shift_action(
+                        shift,
+                        user,
+                        'BOOKING_ADVANCE_CREDITED_TO_WALLET',
+                        f"Advance of ₹{refundable_advance:.2f} from cancelled Booking #{bk_num} credited to guest wallet ({cust_name})",
+                        {'booking_number': bk_num, 'amount': float(refundable_advance), 'customer_id': customer.id if customer else None}
+                    )
+                except Exception:
+                    pass
+
+    elif action_norm == 'REFUND':
+        if not refund_method or refund_method not in dict(Payment.PaymentMethod.choices):
+            orig_p = booking.payments.filter(amount__gt=0).first()
+            refund_method = orig_p.payment_method if orig_p else 'CASH'
+
+        ref_number = None
+        for _ in range(10):
+            payment_number = generate_unique_payment_number("PAY-")
+            try:
+                with transaction.atomic():
+                    refund_pay = Payment.objects.create(
+                        property=booking.property,
+                        payment_number=payment_number,
+                        booking=booking,
+                        customer=customer,
+                        stay=None,
+                        shift=shift,
+                        amount=-refundable_advance,
+                        payment_method=refund_method,
+                        transaction_reference=transaction_ref or f"REFUND-BK-{bk_num}",
+                        received_by=user,
+                        created_by=user,
+                        updated_by=user,
+                        notes=notes or f"Advance refund of ₹{refundable_advance:.2f} for cancelled Booking #{bk_num} via {refund_method}"
+                    )
+                ref_number = payment_number
+                break
+            except IntegrityError:
+                continue
+
+        c_notes = f"\n[Cancellation] ₹{refundable_advance:.2f} advance deposit refunded via {refund_method} (PAY: {ref_number})."
+        booking.notes = (booking.notes or "") + c_notes
+        booking._change_reason = f"Cancelled Booking #{bk_num}. Refunded ₹{refundable_advance:.2f} advance via {refund_method}."
+        booking.save(update_fields=['notes'])
+
+        if shift:
+            from apps.shifts.services import log_shift_action
+            try:
+                log_shift_action(
+                    shift,
+                    user,
+                    'BOOKING_ADVANCE_REFUNDED',
+                    f"Refunded ₹{refundable_advance:.2f} advance ({refund_method}) for cancelled Booking #{bk_num} to {cust_name} by {user_name}",
+                    {
+                        'booking_number': bk_num,
+                        'amount': float(refundable_advance),
+                        'payment_method': refund_method,
+                        'payment_number': ref_number
+                    }
+                )
+            except Exception:
+                pass
+
+    elif action_norm == 'FORFEIT':
+        c_notes = f"\n[Cancellation] Advance deposit of ₹{refundable_advance:.2f} retained as cancellation fee."
+        booking.notes = (booking.notes or "") + c_notes
+        booking._change_reason = f"Cancelled Booking #{bk_num}. Advance deposit of ₹{refundable_advance:.2f} retained as cancellation fee."
+        booking.save(update_fields=['notes'])
+
+    return {
+        'advance_amount': float(refundable_advance),
+        'action': action_norm,
+        'wallet_credit_added': float(wallet_credit_added),
+        'refund_payment_number': refund_pay.payment_number if refund_pay else None,
+        'refund_method': refund_method if action_norm == 'REFUND' else None,
+        'customer_wallet_balance': float(customer.advance_credit) if customer else 0.0,
+        'message': f"Advance deposit of ₹{refundable_advance:.2f} processed via {action_norm}."
+    }

@@ -94,7 +94,7 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 
         # 2. Handle Customer Profile (Select existing or create new with deduplication)
-        user_prop = getattr(user, 'property', None) if user and not user.is_superuser else None
+        user_prop = self.get_property_for_request() or getattr(user, 'property', None)
         customer_id = data.get('customer')
         if customer_id and str(customer_id).lower() not in ['null', 'undefined', 'none', '']:
             try:
@@ -211,10 +211,11 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 payment_number = generate_unique_payment_number("PAY-")
                 try:
                     with transaction.atomic():
-                        Payment.objects.create(
+                        pay = Payment(
                             property=user_prop,
                             payment_number=payment_number,
                             stay=stay,
+                            customer=customer,
                             amount=advance_payment,
                             payment_method=data.get('payment_method', 'CASH'),
                             transaction_reference=data.get('transaction_reference', 'Walk-in Payment'),
@@ -222,6 +223,8 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                             shift=user_shift,
                             notes='Initial Walk-in Advance Payment'
                         )
+                        pay._change_reason = f"Advance payment of ₹{advance_payment} received ({data.get('payment_method', 'CASH')}) for Stay #{stay.stay_number} (Room {room.room_number})"
+                        pay.save()
                     break
                 except IntegrityError:
                     continue
@@ -302,8 +305,13 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                         remaining_to_deduct -= draw_amt
 
         # Update Room status to OCCUPIED
+        adv_txt = f" - Received ₹{advance_payment} advance payment via {data.get('payment_method', 'CASH')}" if advance_payment and float(advance_payment) > 0 else ""
         room.status = Room.Status.OCCUPIED
+        room._change_reason = f"Check-in: Guest {customer.full_name} checked into Room {room.room_number} (Stay #{stay.stay_number}){adv_txt}."
         room.save()
+
+        stay._change_reason = f"Walk-in Check-in: Guest {customer.full_name} checked into Room {room.room_number}{adv_txt}."
+        stay.save()
 
         return Response({
             'success': True,
@@ -533,17 +541,20 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         stay.actual_checkout_date = actual_date
         stay.actual_checkout_time = actual_time
         stay.status = Stay.Status.CHECKED_OUT
+        stay._change_reason = f"Checked out of Room {stay.room.room_number}. Final bill settled."
         stay.save()
 
         # 5. Update Room Status (AVAILABLE / CLEANING / MAINTENANCE)
         room = stay.room
         room_next_status = request.data.get('room_status', Room.Status.CLEANING)
         room.status = room_next_status
+        room._change_reason = f"Room {room.room_number} status set to {room_next_status} after Stay #{stay.stay_number} checkout."
         room.save()
 
         # 6. Mark linked booking as COMPLETED
         if stay.booking:
             stay.booking.status = Booking.Status.COMPLETED
+            stay.booking._change_reason = f"Reservation completed following Stay #{stay.stay_number} checkout."
             stay.booking.save()
 
         # 7. Generate Invoice (Rule #66)

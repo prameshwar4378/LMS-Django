@@ -3,6 +3,7 @@ from django.conf import settings
 from django.utils import timezone
 from decimal import Decimal
 from apps.settings_app.tenant_models import TenantModel
+from simple_history.models import HistoricalRecords
 
 class CashDrawer(TenantModel):
     name = models.CharField(max_length=100, help_text="e.g. Main Front Desk Till #1")
@@ -13,6 +14,7 @@ class CashDrawer(TenantModel):
     allow_shared_users = models.BooleanField(default=False, help_text="Allow multiple cashiers to operate simultaneously")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ['name']
@@ -98,6 +100,7 @@ class Shift(TenantModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ['-opened_at']

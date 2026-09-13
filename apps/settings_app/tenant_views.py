@@ -99,15 +99,37 @@ class TenantScopedViewSetMixin:
 
         # Check if the serializer's model has 'property' field
         model_cls = getattr(serializer.Meta, 'model', None)
+        save_kwargs = {}
         if model_cls and hasattr(model_cls, 'property'):
-            serializer.save(property=user_prop)
-        else:
-            serializer.save()
+            if user_prop:
+                save_kwargs['property'] = user_prop
+            elif user and getattr(user, 'property', None):
+                save_kwargs['property'] = user.property
+
+        instance = serializer.save(**save_kwargs)
+        if user and user.is_authenticated and instance:
+            try:
+                instance._history_user = user
+            except Exception:
+                pass
 
     def perform_update(self, serializer):
+        user = getattr(self.request, 'user', None)
         user_prop = self.get_property_for_request()
         self.validate_tenant_integrity(serializer.validated_data, user_prop)
-        serializer.save()
+        save_kwargs = {}
+        instance = serializer.save(**save_kwargs)
+        if user and user.is_authenticated and instance:
+            try:
+                instance._history_user = user
+            except Exception:
+                pass
+
+    def perform_destroy(self, instance):
+        user = getattr(self.request, 'user', None)
+        if user and user.is_authenticated:
+            instance._history_user = user
+        instance.delete()
 
     def validate_tenant_integrity(self, validated_data, user_prop):
         """

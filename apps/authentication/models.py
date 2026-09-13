@@ -9,7 +9,8 @@ DEFAULT_PERMISSIONS = {
         'billing': {'can_collect_payment': True, 'can_give_discount': True, 'max_discount_percent': 25.0, 'can_refund': True, 'can_void': True},
         'counter_till': {'can_record_expense': True, 'max_expense_limit': 2000.0, 'can_adjust_float': True, 'can_close_till': True},
         'reports': {'can_view_revenue': True, 'can_view_police_gazette': True, 'can_export_excel': True},
-        'night_audit': {'can_run_night_audit': True, 'can_rollback_audit': True}
+        'night_audit': {'can_run_night_audit': True, 'can_rollback_audit': True},
+        'catalogue': {'can_view': True, 'can_edit': True, 'can_upload_photos': True, 'can_manage_inquiries': True, 'can_export_qr': True}
     },
     'RECEPTIONIST': {
         'rooms': {'can_view': True, 'can_create': False, 'can_edit_tariffs': False, 'can_change_status': True},
@@ -18,7 +19,8 @@ DEFAULT_PERMISSIONS = {
         'billing': {'can_collect_payment': True, 'can_give_discount': True, 'max_discount_percent': 10.0, 'can_refund': False, 'can_void': False},
         'counter_till': {'can_record_expense': True, 'max_expense_limit': 500.0, 'can_adjust_float': False, 'can_close_till': True},
         'reports': {'can_view_revenue': False, 'can_view_police_gazette': True, 'can_export_excel': False},
-        'night_audit': {'can_run_night_audit': False, 'can_rollback_audit': False}
+        'night_audit': {'can_run_night_audit': False, 'can_rollback_audit': False},
+        'catalogue': {'can_view': True, 'can_edit': False, 'can_upload_photos': False, 'can_manage_inquiries': True, 'can_export_qr': True}
     }
 }
 

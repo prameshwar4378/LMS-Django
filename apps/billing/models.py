@@ -3,12 +3,14 @@ from django.conf import settings
 from django.utils import timezone
 from apps.stays.models import Stay
 from apps.settings_app.tenant_models import TenantModel
+from simple_history.models import HistoricalRecords
 
 class ChargeType(TenantModel):
     name = models.CharField(max_length=100)
     default_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    history = HistoricalRecords()
 
     class Meta:
         constraints = [
@@ -34,6 +36,7 @@ class ExtraCharge(models.Model):
         related_name='created_extra_charges'
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
         self.amount = self.quantity * self.unit_price
@@ -53,6 +56,7 @@ class Payment(TenantModel):
     payment_number = models.CharField(max_length=50, unique=True)
     customer = models.ForeignKey('customers.Customer', on_delete=models.SET_NULL, null=True, blank=True, related_name='payments')
     stay = models.ForeignKey(Stay, on_delete=models.CASCADE, null=True, blank=True, related_name='payments')
+    booking = models.ForeignKey('bookings.Booking', on_delete=models.SET_NULL, null=True, blank=True, related_name='payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices, default=PaymentMethod.CASH)
     transaction_reference = models.CharField(max_length=100, blank=True, null=True)
@@ -88,6 +92,7 @@ class Payment(TenantModel):
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
         if not self.created_by and self.received_by:
@@ -110,6 +115,10 @@ class Payment(TenantModel):
                 self.property = self.shift.property
             elif self.stay and getattr(self.stay, 'property', None):
                 self.property = self.stay.property
+            elif self.booking and getattr(self.booking, 'property', None):
+                self.property = self.booking.property
+            elif self.customer and getattr(self.customer, 'property', None):
+                self.property = self.customer.property
             elif self.received_by and getattr(self.received_by, 'property', None):
                 self.property = self.received_by.property
 

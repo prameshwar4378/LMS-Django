@@ -4,6 +4,7 @@ import datetime
 from apps.customers.models import Customer
 from apps.rooms.models import Room
 from apps.settings_app.tenant_models import TenantModel
+from simple_history.models import HistoricalRecords
 
 class Booking(TenantModel):
     class Status(models.TextChoices):
@@ -47,6 +48,7 @@ class Booking(TenantModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
 
     @property
     def check_in_datetime(self):
@@ -81,6 +83,14 @@ class Booking(TenantModel):
             except Exception:
                 t = datetime.time(11, 0)
         return datetime.datetime.combine(d, t)
+
+    def save(self, *args, **kwargs):
+        if not self.property_id:
+            if self.room and getattr(self.room, 'property_id', None):
+                self.property = self.room.property
+            elif self.created_by and getattr(self.created_by, 'property_id', None):
+                self.property = self.created_by.property
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Booking #{self.booking_number} - {self.customer.full_name} (Room {self.room.room_number})"

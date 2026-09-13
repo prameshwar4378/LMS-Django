@@ -1,10 +1,11 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Q
+from rest_framework.exceptions import ValidationError
+from django.db.models import Q, Sum
 import datetime
-from .models import RoomType, Room
-from .serializers import RoomTypeSerializer, RoomSerializer
+from .models import RoomType, Room, RoomDeletionRequest
+from .serializers import RoomTypeSerializer, RoomSerializer, RoomDeletionRequestSerializer
 from .services import check_room_availability
 
 def parse_datetime(val_str, default_time_str='12:00'):
@@ -33,6 +34,103 @@ def parse_datetime(val_str, default_time_str='12:00'):
         return datetime.datetime.combine(d, datetime.time(h, m, s))
     except Exception:
         return datetime.datetime.combine(d, datetime.time(12, 0))
+
+def get_room_activity_details(room, user):
+    from apps.stays.models import Stay
+    from apps.bookings.models import Booking
+    from apps.billing.models import Payment
+
+    is_owner = bool(user and (user.is_superuser or getattr(user, 'role', '') in ['HOTEL_OWNER', 'SUPER_ADMIN', 'SUPERUSER']))
+    user_role = getattr(user, 'role', 'STAFF') if user else 'STAFF'
+
+    # 1. Stays connected to this room
+    all_stays = Stay.objects.filter(room=room).select_related('primary_customer')
+    active_stays_qs = all_stays.filter(status__in=['CHECKED_IN', 'RESERVED']).order_by('-check_in_date')
+    active_stays_count = active_stays_qs.count()
+    past_stays_count = all_stays.filter(status='CHECKED_OUT').count()
+    total_stays_count = all_stays.count()
+
+    active_stays_list = []
+    has_in_house = False
+    for s in active_stays_qs[:5]:
+        if s.status == 'CHECKED_IN':
+            has_in_house = True
+        active_stays_list.append({
+            'id': s.id,
+            'stay_number': s.stay_number,
+            'customer_name': s.primary_customer.full_name if s.primary_customer else 'Guest',
+            'customer_phone': s.primary_customer.mobile if s.primary_customer else '—',
+            'check_in_date': str(s.check_in_date),
+            'expected_checkout_date': str(s.expected_checkout_date),
+            'status': s.status
+        })
+
+    # 2. Bookings connected to this room
+    all_bookings = Booking.objects.filter(room=room).select_related('customer')
+    upcoming_bookings_qs = all_bookings.filter(status__in=['CONFIRMED', 'PENDING']).order_by('check_in_date')
+    upcoming_bookings_count = upcoming_bookings_qs.count()
+    total_bookings_count = all_bookings.count()
+
+    upcoming_bookings_list = []
+    for b in upcoming_bookings_qs[:5]:
+        checkout_val = getattr(b, 'expected_checkout_date', getattr(b, 'check_out_date', ''))
+        upcoming_bookings_list.append({
+            'id': b.id,
+            'booking_number': b.booking_number,
+            'customer_name': b.customer.full_name if b.customer else 'Guest',
+            'customer_phone': b.customer.mobile if b.customer else '—',
+            'check_in_date': str(b.check_in_date),
+            'check_out_date': str(checkout_val),
+            'expected_checkout_date': str(checkout_val),
+            'status': b.status
+        })
+
+    # 3. Revenue / Payments
+    payments = Payment.objects.filter(Q(stay__room=room) | Q(booking__room=room))
+    rev_agg = payments.aggregate(total=Sum('amount'))
+    total_revenue = float(rev_agg['total'] or 0)
+
+    # 4. Check for existing pending deletion request
+    pending_req = RoomDeletionRequest.objects.filter(room=room, status=RoomDeletionRequest.Status.PENDING).first()
+    pending_req_data = None
+    if pending_req:
+        pending_req_data = {
+            'id': pending_req.id,
+            'requested_by': pending_req.requested_by.get_full_name() or pending_req.requested_by.username,
+            'requested_by_role': getattr(pending_req.requested_by, 'role', 'STAFF'),
+            'reason': pending_req.reason,
+            'created_at': pending_req.created_at.isoformat()
+        }
+
+    block_reason = ""
+    if has_in_house:
+        block_reason = f"Room {room.room_number} currently has an in-house guest. Guests must be checked out or transferred before deleting the room."
+    elif not is_owner:
+        block_reason = "Owner authorization is required. As a manager/receptionist, please submit a deletion request."
+
+    can_delete_directly = is_owner and not has_in_house
+
+    return {
+        'room_id': room.id,
+        'room_number': room.room_number,
+        'room_type_name': room.room_type.name if room.room_type else '',
+        'floor': room.floor,
+        'status': room.status,
+        'has_in_house': has_in_house,
+        'active_stays': active_stays_list,
+        'active_stays_count': active_stays_count,
+        'upcoming_bookings': upcoming_bookings_list,
+        'upcoming_bookings_count': upcoming_bookings_count,
+        'past_stays_count': past_stays_count,
+        'total_stays_count': total_stays_count,
+        'total_bookings_count': total_bookings_count,
+        'total_revenue': total_revenue,
+        'pending_deletion_request': pending_req_data,
+        'user_role': user_role,
+        'is_owner': is_owner,
+        'can_delete_directly': can_delete_directly,
+        'block_reason': block_reason
+    }
 
 from apps.settings_app.tenant_views import TenantScopedViewSetMixin
 
@@ -113,10 +211,67 @@ class RoomViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         super().perform_update(serializer)
 
     def perform_destroy(self, instance):
-        require_perm(self.request.user, 'rooms', 'can_create', "You do not have permission to delete rooms.")
+        user = self.request.user
+        is_owner = bool(user and (user.is_superuser or getattr(user, 'role', '') in ['HOTEL_OWNER', 'SUPER_ADMIN', 'SUPERUSER']))
+        
+        # If user is manager or receptionist, block direct deletion
+        if not is_owner:
+            raise ValidationError({
+                'detail': 'Only the Hotel Owner can delete rooms directly. Managers and Receptionists must submit a deletion request for owner approval.'
+            })
+
+        # Check for active in-house stays
+        active_in_house = instance.stays.filter(status='CHECKED_IN').select_related('primary_customer').first()
+        if active_in_house:
+            cust_name = active_in_house.primary_customer.full_name if active_in_house.primary_customer else 'Guest'
+            raise ValidationError({
+                'detail': f"Cannot delete Room {instance.room_number} because guest '{cust_name}' is currently checked in (Stay #{active_in_house.stay_number}). Please check out or transfer the guest before deleting this room."
+            })
+
+        # Unlink any related deletion requests so audit record remains intact
+        RoomDeletionRequest.objects.filter(room=instance).update(room=None)
+
         super().perform_destroy(instance)
 
+    @action(detail=True, methods=['get'])
+    def activity(self, request, pk=None):
+        room = self.get_object()
+        data = get_room_activity_details(room, request.user)
+        return Response(data)
 
+    @action(detail=True, methods=['post'])
+    def request_deletion(self, request, pk=None):
+        room = self.get_object()
+        user = request.user
+
+        # Check if already pending
+        existing = RoomDeletionRequest.objects.filter(room=room, status=RoomDeletionRequest.Status.PENDING).first()
+        if existing:
+            return Response({
+                'success': False,
+                'message': f"A deletion request for Room {room.room_number} is already pending owner review."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        reason = request.data.get('reason', '').strip()
+        activity_data = get_room_activity_details(room, user)
+
+        del_req = RoomDeletionRequest.objects.create(
+            property=room.property,
+            room=room,
+            room_number=room.room_number,
+            room_type_name=room.room_type.name if room.room_type else '',
+            floor=room.floor,
+            requested_by=user,
+            reason=reason,
+            activity_summary=activity_data,
+            status=RoomDeletionRequest.Status.PENDING
+        )
+
+        return Response({
+            'success': True,
+            'message': f"Deletion request for Room {room.room_number} submitted to Owner for review.",
+            'request': RoomDeletionRequestSerializer(del_req).data
+        }, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'])
     def availability(self, request):
@@ -184,11 +339,113 @@ class RoomViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if new_status not in Room.Status.values:
             return Response({'success': False, 'message': f'Invalid status. Allowed: {Room.Status.values}', 'errors': {'status': ['Invalid.']}}, status=status.HTTP_400_BAD_REQUEST)
         
+        old_status = room.status
         room.status = new_status
+        room._change_reason = f"Room {room.room_number} status updated from {old_status} to {new_status}."
         room.save()
         return Response({
             'success': True,
             'message': f'Room status updated to {new_status}.',
             'data': self.get_serializer(room).data
         })
+
+
+class RoomDeletionRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    queryset = RoomDeletionRequest.objects.all().order_by('-created_at')
+    serializer_class = RoomDeletionRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter.upper())
+        return qs
+
+    @action(detail=False, methods=['get'])
+    def pending(self, request):
+        qs = self.get_queryset().filter(status=RoomDeletionRequest.Status.PENDING)
+        serializer = self.get_serializer(qs, many=True)
+        return Response({
+            'pending_count': qs.count(),
+            'results': serializer.data
+        })
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        from django.utils import timezone
+        user = request.user
+        is_owner = bool(user and (user.is_superuser or getattr(user, 'role', '') in ['HOTEL_OWNER', 'SUPER_ADMIN', 'SUPERUSER']))
+        if not is_owner:
+            return Response({
+                'success': False,
+                'message': 'Only the Hotel Owner can approve room deletions.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        del_req = self.get_object()
+        if del_req.status != RoomDeletionRequest.Status.PENDING:
+            return Response({
+                'success': False,
+                'message': f'This deletion request is already {del_req.status}.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if room exists and has active stay
+        if del_req.room:
+            room = del_req.room
+            active_in_house = room.stays.filter(status='CHECKED_IN').exists()
+            if active_in_house:
+                return Response({
+                    'success': False,
+                    'message': f"Cannot delete Room {room.room_number} because a guest is currently checked in. Check out guest first."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            room_num = room.room_number
+            # Unlink room from this and any other requests before deleting
+            del_req.room = None
+            del_req.save()
+            RoomDeletionRequest.objects.filter(room=room).update(room=None)
+            room.delete()
+        else:
+            room_num = del_req.room_number
+
+        del_req.status = RoomDeletionRequest.Status.APPROVED
+        del_req.reviewed_by = user
+        del_req.reviewed_at = timezone.now()
+        del_req.review_notes = request.data.get('notes', 'Approved & deleted by Hotel Owner')
+        del_req.save()
+
+        return Response({
+            'success': True,
+            'message': f"Room {room_num} deletion approved. Room has been permanently deleted from inventory."
+        })
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        from django.utils import timezone
+        user = request.user
+        is_owner = bool(user and (user.is_superuser or getattr(user, 'role', '') in ['HOTEL_OWNER', 'SUPER_ADMIN', 'SUPERUSER']))
+        if not is_owner:
+            return Response({
+                'success': False,
+                'message': 'Only the Hotel Owner can reject room deletion requests.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        del_req = self.get_object()
+        if del_req.status != RoomDeletionRequest.Status.PENDING:
+            return Response({
+                'success': False,
+                'message': f'This deletion request is already {del_req.status}.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        del_req.status = RoomDeletionRequest.Status.REJECTED
+        del_req.reviewed_by = user
+        del_req.reviewed_at = timezone.now()
+        del_req.review_notes = request.data.get('notes', 'Rejected by Hotel Owner')
+        del_req.save()
+
+        return Response({
+            'success': True,
+            'message': f"Deletion request for Room {del_req.room_number} has been rejected."
+        })
+
 

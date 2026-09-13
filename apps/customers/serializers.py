@@ -16,6 +16,14 @@ class CustomerSerializer(serializers.ModelSerializer):
         model = Customer
         fields = '__all__'
 
+    def create(self, validated_data):
+        validated_data.pop('_history_user', None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data.pop('_history_user', None)
+        return super().update(instance, validated_data)
+
     def get_total_wallet_credit(self, obj):
         from apps.billing.services import calculate_stay_bill
         raw_credit = float(obj.advance_credit or 0)

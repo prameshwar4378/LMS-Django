@@ -5,6 +5,7 @@ from apps.customers.models import Customer
 from apps.rooms.models import Room
 from apps.bookings.models import Booking
 from apps.settings_app.tenant_models import TenantModel
+from simple_history.models import HistoricalRecords
 
 class Stay(TenantModel):
     class Status(models.TextChoices):
@@ -54,6 +55,7 @@ class Stay(TenantModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
 
     @property
     def check_in_datetime(self):
@@ -71,6 +73,18 @@ class Stay(TenantModel):
             t = self.actual_checkout_time or datetime.time(11, 0)
             return datetime.datetime.combine(self.actual_checkout_date, t)
         return self.expected_checkout_datetime
+
+    def save(self, *args, **kwargs):
+        if not self.property_id:
+            if self.room and getattr(self.room, 'property_id', None):
+                self.property = self.room.property
+            elif self.booking and getattr(self.booking, 'property_id', None):
+                self.property = self.booking.property
+            elif self.primary_customer and getattr(self.primary_customer, 'property_id', None):
+                self.property = self.primary_customer.property
+            elif self.created_by and getattr(self.created_by, 'property_id', None):
+                self.property = self.created_by.property
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Stay #{self.stay_number} - Room {self.room.room_number} ({self.primary_customer.full_name})"
