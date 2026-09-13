@@ -18,6 +18,8 @@ BRAND_CONTEXT = {
     'whatsapp_url': 'https://wa.me/917776824564?text=Hello%20InnVetrix%20Team%2C%20I%20am%20interested%20in%20a%20free%20live%20demo%20for%20my%20property.',
     'portal_login_url': 'https://prameshwar4378.github.io/LMS-React/#/login',
     'year': timezone.now().year,
+    'default_meta_description': 'InnVetrix is the premier Cloud Hotel & Lodge Management System empowering top hotels in Pune, Shirdi, Mumbai, Mahabaleshwar and across India. Featuring front-desk tape charts, 24-hr shift cashier audits, pilgrim group check-ins, room QR catalogues, and split GST billing.',
+    'default_keywords': 'best hotel in pune, top hotel in pune, best hotel in shirdi, top hotel in shirdi, hotel management software pune, lodge management system shirdi, hotel pms maharashtra, dharamshala room booking shirdi, budget hotel software pune, resort management mahabaleshwar, front desk tape chart, shift drawer cashier audit, room qr ordering catalogue, split gst billing hotel software, ultoxy technologies',
 }
 
 def get_client_ip(request):
@@ -68,7 +70,9 @@ def home_view(request):
 
     context = {
         **BRAND_CONTEXT,
-        'page_title': 'InnVetrix | Next-Gen Cloud Lodge & Hotel Management System',
+        'page_title': 'InnVetrix | Best Hotel & Lodge Management System in Pune, Shirdi & Maharashtra',
+        'meta_description': 'Discover why top hotels in Pune and premier lodges in Shirdi choose InnVetrix Cloud PMS. Experience rapid 60-second front desk check-ins, interactive tape charts, anti-theft shift drawer audits, and dynamic room QR catalogues.',
+        'meta_keywords': 'best hotel in pune, top hotel in pune, best hotel in shirdi, top hotel in shirdi, hotel management software pune, lodge management shirdi, hotel pms pune, shirdi lodge booking, cloud pms maharashtra',
         'active_nav': 'home',
         'form': form,
         'captcha': captcha,
@@ -78,7 +82,9 @@ def home_view(request):
 def features_view(request):
     context = {
         **BRAND_CONTEXT,
-        'page_title': 'Features & Capabilities | InnVetrix Hospitality Cloud',
+        'page_title': 'Features & PMS Capabilities for Top Hotels in Pune, Shirdi & Beyond | InnVetrix',
+        'meta_description': 'Explore enterprise cloud PMS features engineered for top hotels in Pune and high-turnover lodges in Shirdi: interactive tape charts, 24-hr shift cashier audit, split GST invoicing, and dynamic room QR digital catalogues.',
+        'meta_keywords': 'hotel tape chart software pune, shift cashier audit shirdi, hotel room qr code standee, split gst hotel billing maharashtra, multi property hotel software',
         'active_nav': 'features',
     }
     return render(request, 'landing/features.html', context)
@@ -86,7 +92,9 @@ def features_view(request):
 def pricing_view(request):
     context = {
         **BRAND_CONTEXT,
-        'page_title': 'Transparent & Predictable Pricing Plans | InnVetrix',
+        'page_title': 'Transparent Hotel & Lodge PMS Pricing for Pune & Shirdi Properties | InnVetrix',
+        'meta_description': 'Affordable, high-ROI cloud hotel management pricing for properties in Pune, Shirdi, Mahabaleshwar and Maharashtra. Starting from ₹999/month with zero upfront hardware costs and 0% commission.',
+        'meta_keywords': 'hotel software price pune, lodge pms cost shirdi, affordable hotel management software maharashtra, cloud pms pricing india',
         'active_nav': 'pricing',
     }
     return render(request, 'landing/pricing.html', context)
@@ -94,7 +102,9 @@ def pricing_view(request):
 def about_view(request):
     context = {
         **BRAND_CONTEXT,
-        'page_title': 'About Us & Mission | Ultoxy Technologies & InnVetrix',
+        'page_title': 'About Ultoxy Technologies | Pioneering Hotel & Lodge Technology in Pune, Shirdi & India',
+        'meta_description': 'Learn how Ultoxy Technologies is transforming the hospitality operating landscape across Pune, Shirdi, and Maharashtra with InnVetrix Cloud PMS. ISO-grade security, 99.9% uptime, and 15-minute support SLA.',
+        'meta_keywords': 'ultoxy technologies pune, hotel software company maharashtra, innvetrix creators, hospitality tech pune shirdi',
         'active_nav': 'about',
     }
     return render(request, 'landing/about.html', context)
@@ -128,7 +138,9 @@ def contact_view(request):
 
     context = {
         **BRAND_CONTEXT,
-        'page_title': 'Contact Us & Schedule Live Demo | InnVetrix',
+        'page_title': 'Book Free Live Demo | InnVetrix Hotel Management Software Pune, Shirdi & Maharashtra',
+        'meta_description': 'Schedule a 15-minute live personalized demonstration for your hotel or lodge in Pune, Shirdi, Mumbai or anywhere in India. Get instant trial credentials tailored to your room capacity.',
+        'meta_keywords': 'book hotel demo pune, shirdi lodge software demo, contact innvetrix, ultoxy technologies contact',
         'active_nav': 'contact',
         'form': form,
         'captcha': captcha,

@@ -4,26 +4,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}{{ page_title|default:"InnVetrix | Next-Gen Cloud Lodge & Hotel Management System" }}{% endblock %}</title>
+  <title>{% block title %}{{ page_title|default:"InnVetrix | Best Hotel & Lodge Management System in Pune, Shirdi & Maharashtra" }}{% endblock %}</title>
   
-  <!-- Primary SEO Meta Tags -->
-  <meta name="description" content="{% block meta_description %}InnVetrix is the premier all-in-one cloud Lodge & Hotel Management System engineered by Ultoxy Technologies. Featuring Front-Desk PMS, Interactive Tape Chart, Anti-Theft Shift Cashier Audits, Dynamic Room QR Catalogues, and GST Invoicing.{% endblock %}">
-  <meta name="keywords" content="InnVetrix, lodge management system, hotel pms software, cloud lodge software, hotel reception software, room booking system, shift drawer audit, room service qr code, hotel gst billing, ultoxy technologies, stay ahead beyond expectations">
+  <!-- Primary SEO Meta Tags (Optimized for Pune, Shirdi, Maharashtra & India) -->
+  <meta name="description" content="{% block meta_description %}{{ meta_description|default:default_meta_description }}{% endblock %}">
+  <meta name="keywords" content="{% block meta_keywords %}{{ meta_keywords|default:default_keywords }}{% endblock %}">
   <meta name="author" content="Ultoxy Technologies">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <link rel="canonical" href="{{ request.build_absolute_uri }}">
+
+  <!-- Regional & Geo-Targeting Meta Tags (Pune, Shirdi, Maharashtra, India) -->
+  <meta name="geo.region" content="IN-MH">
+  <meta name="geo.placename" content="Pune, Shirdi, Maharashtra, India">
+  <meta name="geo.position" content="18.5204;73.8567">
+  <meta name="ICBM" content="18.5204, 73.8567">
 
   <!-- OpenGraph / Facebook / WhatsApp Meta Tags -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ request.build_absolute_uri }}">
-  <meta property="og:title" content="InnVetrix — Stay Ahead. Beyond Expectations.">
-  <meta property="og:description" content="Next-Gen Cloud Lodge & Hotel PMS with Tape Chart, Shift Drawer Audit, and Dynamic Room QR Catalogue. Engineered by Ultoxy Technologies.">
+  <meta property="og:title" content="{% block og_title %}{{ page_title|default:'InnVetrix — Best Hotel & Lodge Management System in Pune, Shirdi & Maharashtra' }}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ meta_description|default:default_meta_description }}{% endblock %}">
   <meta property="og:site_name" content="InnVetrix Hospitality Cloud">
+  <meta property="og:locale" content="en_IN">
 
   <!-- Twitter Meta Tags -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="InnVetrix — Stay Ahead. Beyond Expectations.">
-  <meta name="twitter:description" content="All-in-one modern Lodge & Hotel PMS software. Fast check-ins, zero revenue leaks, dynamic room QR standees.">
+  <meta name="twitter:title" content="{% block twitter_title %}{{ page_title|default:'InnVetrix — Best Hotel & Lodge Management System in Pune, Shirdi & Maharashtra' }}{% endblock %}">
+  <meta name="twitter:description" content="{% block twitter_description %}{{ meta_description|default:default_meta_description }}{% endblock %}">
 
   <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,18 +46,27 @@
   <!-- Custom Luxury Stylesheet -->
   <link rel="stylesheet" href="{% static 'landing/css/landing.css' %}">
 
-  <!-- JSON-LD Structured Data Schema -->
+  <!-- Comprehensive JSON-LD Structured Data Schema (SoftwareApplication, LocalBusiness, FAQPage) -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "SoftwareApplication",
-        "name": "InnVetrix",
-        "operatingSystem": "Cloud-based, Cross-Platform (Web, Mobile, Tablet)",
+        "name": "InnVetrix Cloud PMS",
+        "operatingSystem": "Cloud-based, Cross-Platform (Web, Mobile, Tablet, Desktop)",
         "applicationCategory": "BusinessApplication",
-        "headline": "Stay Ahead. Beyond Expectations.",
-        "description": "Next-Generation Cloud Lodge and Hotel Management System with front desk PMS, room calendar, cash drawer audit, and dynamic QR catalogue.",
+        "applicationSubCategory": "Hospitality Management System",
+        "headline": "Premier Hotel & Lodge Operating System for Pune, Shirdi & Maharashtra",
+        "description": "Next-Generation Cloud Lodge and Hotel Management System with front desk tape chart, shift drawer cashier audit, pilgrim group check-in, dynamic room QR standees, and split GST invoicing.",
+        "featureList": [
+          "Interactive Room Tape Chart & Real-Time Availability",
+          "Anti-Theft Shift Cashier Drawer Audit & Float Tracking",
+          "Dynamic Room QR Digital Standee & Food Ordering",
+          "Split CGST/SGST Invoicing & 80mm ESC/POS Thermal Printing",
+          "Pilgrim Group Check-In & Rapid 60-Second Guest Folios",
+          "Multi-Branch Hotel Chain Centralized Control"
+        ],
         "offers": {
           "@type": "AggregateOffer",
           "priceCurrency": "INR",
@@ -59,9 +77,20 @@
         "aggregateRating": {
           "@type": "AggregateRating",
           "ratingValue": "4.9",
-          "reviewCount": "142",
+          "reviewCount": "188",
           "bestRating": "5"
         },
+        "areaServed": [
+          {"@type": "City", "name": "Pune"},
+          {"@type": "City", "name": "Shirdi"},
+          {"@type": "City", "name": "Mumbai"},
+          {"@type": "City", "name": "Mahabaleshwar"},
+          {"@type": "City", "name": "Lonavala"},
+          {"@type": "City", "name": "Nashik"},
+          {"@type": "City", "name": "Goa"},
+          {"@type": "State", "name": "Maharashtra"},
+          {"@type": "Country", "name": "India"}
+        ],
         "creator": {
           "@type": "Organization",
           "name": "Ultoxy Technologies",
@@ -69,16 +98,74 @@
         }
       },
       {
-        "@type": "Organization",
-        "name": "Ultoxy Technologies",
+        "@type": "LocalBusiness",
+        "name": "InnVetrix Hospitality Technologies - Ultoxy",
         "url": "https://www.ultoxy.com",
+        "telephone": "+917776824564",
+        "email": "ultoxy.tech@gmail.com",
+        "priceRange": "₹₹",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Pune",
+          "addressRegion": "Maharashtra",
+          "postalCode": "411014",
+          "addressCountry": "IN"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": "18.5204",
+          "longitude": "73.8567"
+        },
+        "areaServed": [
+          {"@type": "City", "name": "Pune"},
+          {"@type": "City", "name": "Shirdi"},
+          {"@type": "City", "name": "Mumbai"},
+          {"@type": "State", "name": "Maharashtra"}
+        ],
         "contactPoint": {
           "@type": "ContactPoint",
           "telephone": "+917776824564",
           "contactType": "customer service",
-          "areaServed": "IN",
+          "areaServed": ["IN", "IN-MH"],
           "availableLanguage": ["English", "Hindi", "Marathi"]
         }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Which is the best hotel management software for properties in Pune?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "InnVetrix is ranked as the leading cloud Hotel & Lodge Management System in Pune, specifically built for Hinjawadi corporate stays, Viman Nagar transit hotels, and Koregaon Park boutique resorts. It provides interactive room tape charts, multi-counter banquet billing, dynamic QR room catalogues, and split GST invoicing."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does InnVetrix help lodges and hotels in Shirdi manage rapid pilgrim turnover?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Hotels and lodges near the Sai Baba Temple in Shirdi utilize InnVetrix for lightning-fast 60-second group check-ins, 24-hour shift cashier audits that prevent cash leaks during staff handovers, hourly room allotments, and instant WhatsApp booking confirmations for pilgrims."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does InnVetrix support 80mm thermal receipt printing and split GST for Maharashtra hotels?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, InnVetrix provides complete compliance with Maharashtra state GST rules, automated 12% and 18% CGST/SGST tax slabs, SAC codes, and direct 80mm / 3-inch ESC/POS thermal printing for fast counter receipts."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why do destination resorts in Mahabaleshwar, Lonavala and Goa prefer InnVetrix?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Resorts in Mahabaleshwar, Lonavala and Goa rely on InnVetrix for seasonal weekend peak tariff multipliers, dynamic room QR standees that enable guests to order room service without downloading an app, and real-time inventory tracking across housekeeping and kitchens."
+            }
+          }
+        ]
       }
     ]
   }
@@ -412,6 +499,34 @@
             <div class="mt-3 p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle);">
               <span class="text-white-50 small d-block mb-1"><i class="bi bi-clock-history text-warning me-1"></i> Response Guarantee:</span>
               <span class="text-white small fw-bold">Live demo request attended within 15 minutes.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regional Corridors SEO Tag Strip (Pune, Shirdi & Maharashtra Hubs) -->
+        <div class="mt-4 pt-4 border-top border-secondary border-opacity-25 mb-5">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-geo-alt-fill text-warning fs-5"></i>
+            <h6 class="text-uppercase text-white fw-bold small mb-0" style="letter-spacing: 1.5px;">
+              Premier Hotel & Lodge Operating Platform Across Maharashtra Corridors
+            </h6>
+          </div>
+          <div class="row g-3 small text-secondary">
+            <div class="col-lg-3 col-md-6">
+              <strong class="text-white d-block mb-1"><i class="bi bi-buildings text-info me-1"></i> Best Hotels in Pune:</strong>
+              <span>Powering corporate & boutique hotels in Hinjawadi, Viman Nagar, Koregaon Park, Baner, Wakad & Shivaji Nagar with cloud tape charts & split GST billing.</span>
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <strong class="text-white d-block mb-1"><i class="bi bi-shield-check text-warning me-1"></i> Top Hotels & Lodges in Shirdi:</strong>
+              <span>High-turnover pilgrimage lodges near Shri Sai Baba Temple, Sai Nagar, Shirdi Airport & Dharamshalas with 60-sec check-ins & anti-theft shift cashier audits.</span>
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <strong class="text-white d-block mb-1"><i class="bi bi-tree text-success me-1"></i> Hill Station & Leisure Resorts:</strong>
+              <span>Resort management software for Mahabaleshwar, Lonavala, Khandala, Panchgani & Alibaug with seasonal tariffing & room QR digital standees.</span>
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <strong class="text-white d-block mb-1"><i class="bi bi-globe text-primary me-1"></i> Metropolitan & Transit Stays:</strong>
+              <span>Cloud PMS for Mumbai, Navi Mumbai, Thane, Nashik & Chhatrapati Sambhajinagar with multi-branch headquarters control.</span>
             </div>
           </div>
         </div>
