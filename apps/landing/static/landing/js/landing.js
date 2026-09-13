@@ -7,6 +7,88 @@
     document.documentElement.classList.add('js-reveal');
   }
 
+  // ==========================================================================
+  // 0. LUXURY FULL-PAGE PRELOADER CONTROLLER (Immediate Kickoff)
+  // ==========================================================================
+  (function initPreloader() {
+    const preloader = document.getElementById('page-preloader');
+    const progressBar = document.getElementById('preloaderProgressBar');
+    const percentLabel = document.getElementById('preloaderPercent');
+    const statusText = document.getElementById('preloaderStatusText');
+
+    if (!preloader) return;
+
+    let currentProgress = 14;
+    let isPageLoaded = false;
+    const startTime = Date.now();
+
+    const statusMilestones = [
+      { at: 20, text: 'Initializing Cloud Architecture...' },
+      { at: 50, text: 'Calibrating Front-Desk Tape Chart...' },
+      { at: 75, text: 'Connecting Secure PMS Pipeline...' },
+      { at: 96, text: 'Welcome to InnVetrix' },
+    ];
+
+    function setProgress(val) {
+      currentProgress = Math.min(100, Math.max(currentProgress, val));
+      if (progressBar) progressBar.style.width = `${currentProgress}%`;
+      if (percentLabel) percentLabel.textContent = `${Math.round(currentProgress)}%`;
+      if (statusText) {
+        for (let i = statusMilestones.length - 1; i >= 0; i--) {
+          if (currentProgress >= statusMilestones[i].at) {
+            statusText.textContent = statusMilestones[i].text;
+            break;
+          }
+        }
+      }
+    }
+
+    setProgress(currentProgress);
+
+    // Dynamic progression simulation while assets load
+    const progressTimer = setInterval(() => {
+      if (isPageLoaded) {
+        clearInterval(progressTimer);
+        return;
+      }
+      if (currentProgress < 88) {
+        const increment = Math.random() * 9 + 5;
+        setProgress(currentProgress + increment);
+      }
+    }, 60);
+
+    function dismissPreloader() {
+      if (isPageLoaded) return;
+      isPageLoaded = true;
+      clearInterval(progressTimer);
+
+      setProgress(100);
+
+      // Smooth eye-pleasing pause at 100% (min 350ms total run time)
+      const elapsed = Date.now() - startTime;
+      const finishDelay = Math.max(0, 350 - elapsed) + 160;
+
+      setTimeout(() => {
+        preloader.classList.add('is-loaded');
+        document.body.classList.remove('loading');
+
+        // Cleanup display after transition completes
+        setTimeout(() => {
+          preloader.style.display = 'none';
+        }, 600);
+      }, finishDelay);
+    }
+
+    if (document.readyState === 'complete') {
+      dismissPreloader();
+    } else {
+      window.addEventListener('load', dismissPreloader);
+    }
+
+    // Safety fallback: Dismiss after 1.8s max under any condition
+    setTimeout(dismissPreloader, 1800);
+  })();
+
   function initInnVetrix() {
 
     // ==========================================================================
@@ -289,6 +371,76 @@
         feedbackModal.show();
       }, 150);
     }
+
+    // ==========================================================================
+    // 11. TOP NAVIGATION PROGRESS BAR (PAGE TRANSITION LOADER)
+    // ==========================================================================
+    const topBar = document.getElementById('top-progress-bar');
+    if (topBar) {
+      document.querySelectorAll('a[href]').forEach(link => {
+        link.addEventListener('click', function(e) {
+          const href = this.getAttribute('href');
+          if (
+            !href ||
+            href.startsWith('#') ||
+            href.startsWith('javascript:') ||
+            href.startsWith('tel:') ||
+            href.startsWith('mailto:') ||
+            this.target === '_blank' ||
+            e.metaKey || e.ctrlKey || e.shiftKey
+          ) {
+            return;
+          }
+
+          try {
+            const destUrl = new URL(this.href, window.location.origin);
+            if (destUrl.origin === window.location.origin && destUrl.pathname !== window.location.pathname) {
+              topBar.classList.add('is-active');
+              topBar.style.width = '65%';
+              setTimeout(() => {
+                if (topBar.classList.contains('is-active')) {
+                  topBar.style.width = '88%';
+                }
+              }, 250);
+            }
+          } catch (err) {}
+        });
+      });
+    }
+
+    // ==========================================================================
+    // 12. FORM SUBMISSION LOADING STATE
+    // ==========================================================================
+    document.querySelectorAll('form').forEach(form => {
+      form.addEventListener('submit', function(e) {
+        if (form.checkValidity && !form.checkValidity()) {
+          return;
+        }
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn && !submitBtn.classList.contains('is-submitting')) {
+          submitBtn.classList.add('is-submitting');
+          submitBtn.setAttribute('data-original-html', submitBtn.innerHTML);
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Securing & Submitting...';
+
+          if (topBar) {
+            topBar.classList.add('is-active');
+            topBar.style.width = '80%';
+          }
+
+          // Safety reset after 10s if submission was interrupted
+          setTimeout(() => {
+            if (submitBtn.classList.contains('is-submitting')) {
+              submitBtn.classList.remove('is-submitting');
+              submitBtn.disabled = false;
+              const origHtml = submitBtn.getAttribute('data-original-html');
+              if (origHtml) submitBtn.innerHTML = origHtml;
+            }
+          }, 10000);
+        }
+      });
+    });
 
   }
 
