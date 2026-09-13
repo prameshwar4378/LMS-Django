@@ -275,7 +275,37 @@
       });
     });
 
+    // ==========================================================================
+    // 10. ANIMATED POPUP FEEDBACK DIALOGUE MODAL
+    // ==========================================================================
+    const feedbackModalEl = document.getElementById('innvetrixFeedbackModal');
+    if (feedbackModalEl && typeof bootstrap !== 'undefined') {
+      const feedbackModal = new bootstrap.Modal(feedbackModalEl, {
+        backdrop: 'static',
+        keyboard: true
+      });
+      // Small timeout to allow smooth scale-in spring animation
+      setTimeout(() => {
+        feedbackModal.show();
+      }, 150);
+    }
+
   }
+
+  // Focus helper for error modal CTA
+  window.focusFirstFormError = function() {
+    const errorField = document.querySelector('.text-danger, .is-invalid, [aria-invalid="true"]');
+    if (errorField) {
+      errorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const input = errorField.tagName === 'INPUT' || errorField.tagName === 'SELECT' || errorField.tagName === 'TEXTAREA' ? errorField : errorField.closest('.col-md-6, .col-12')?.querySelector('input, select, textarea');
+      if (input) {
+        setTimeout(() => input.focus(), 400);
+      }
+    } else {
+      const form = document.querySelector('form');
+      if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // Initialize on DOM ready or immediately if already loaded
   if (document.readyState === 'loading') {

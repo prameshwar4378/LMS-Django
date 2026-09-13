@@ -1380,3 +1380,79 @@ input:checked + .slider-round:before {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* ==========================================================================
+   ANIMATED POPUP FEEDBACK DIALOGUE MODAL
+   ========================================================================== */
+.feedback-modal-backdrop .modal-dialog {
+  max-width: 520px;
+  transform: scale(0.82) translateY(28px);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+}
+
+.feedback-modal-backdrop.show .modal-dialog {
+  transform: scale(1) translateY(0);
+}
+
+.dialogue-modal-content {
+  background: rgba(13, 19, 31, 0.96);
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  border-radius: 24px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.85), 0 0 45px rgba(245, 158, 11, 0.2);
+}
+
+.dialogue-ambient-glow {
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.18), transparent 70%);
+  pointer-events: none;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.dialogue-icon-wrap {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  position: relative;
+  animation: pulseIconGlow 2.5s infinite;
+}
+
+.dialogue-icon-wrap.icon-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 2px solid rgba(16, 185, 129, 0.45);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
+}
+
+.dialogue-icon-wrap.icon-error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 2px solid rgba(239, 68, 68, 0.45);
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.35);
+}
+
+@keyframes pulseIconGlow {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.modal-backdrop.show {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background-color: rgba(5, 7, 12, 0.8);
+}
