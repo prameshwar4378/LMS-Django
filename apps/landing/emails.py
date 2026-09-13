@@ -189,7 +189,7 @@ YOUR REQUEST DETAILS:
 - Contact Phone: {data.get('phone')}
 
 WHAT HAPPENS NEXT:
-1. Rapid Response: A dedicated hospitality technology consultant from Ultoxy Technologies will reach out within 15 minutes to confirm your preferred walkthrough slot.
+1. Dedicated Outreach: A hospitality technology consultant from Ultoxy Technologies will review your property details and contact you to coordinate your walkthrough slot.
 2. Tailored Sandbox: We prepare a custom demo environment matching your room inventory ({data.get('room_count')} rooms) and operational needs.
 3. Zero-Risk Trial: Following the walkthrough, you'll receive immediate trial credentials to experience front-desk speed firsthand.
 
@@ -277,7 +277,7 @@ Ultoxy Technologies | Stay Ahead. Beyond Expectations."""
                     <div style="width: 28px; height: 28px; border-radius: 50%; background: #4f46e5; color: #ffffff; text-align: center; line-height: 28px; font-size: 13px; font-weight: 700;">1</div>
                   </td>
                   <td style="vertical-align: top; padding-bottom: 16px; padding-left: 8px;">
-                    <strong style="color: #ffffff; font-size: 14px; display: block;">15-Minute Priority Outreach</strong>
+                    <strong style="color: #ffffff; font-size: 14px; display: block;">Dedicated Hospitality Outreach</strong>
                     <span style="color: #94a3b8; font-size: 13px; line-height: 1.5;">A senior hospitality consultant will call you at <strong style="color: #cbd5e1;">{escape(str(data.get('phone', '')))}</strong> to align on your workflow goals.</span>
                   </td>
                 </tr>

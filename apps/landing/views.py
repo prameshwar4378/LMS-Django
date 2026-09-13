@@ -58,7 +58,7 @@ def home_view(request):
             send_inquiry_emails_async(inquiry)
             messages.success(
                 request,
-                f"Thank you, {inquiry.full_name}! Your demo request for '{inquiry.property_name}' has been successfully scheduled. Our team will reach out at {inquiry.phone} within 15 minutes."
+                f"Thank you, {inquiry.full_name}! Your demo request for '{inquiry.property_name}' has been successfully scheduled. Our team will review your inquiry and reach out at {inquiry.phone}."
             )
             return redirect('home')
         else:
@@ -103,7 +103,7 @@ def about_view(request):
     context = {
         **BRAND_CONTEXT,
         'page_title': 'About Ultoxy Technologies | Pioneering Hotel & Lodge Technology in Pune, Shirdi & India',
-        'meta_description': 'Learn how Ultoxy Technologies is transforming the hospitality operating landscape across Pune, Shirdi, and Maharashtra with InnVetrix Cloud PMS. ISO-grade security, 99.9% uptime, and 15-minute support SLA.',
+        'meta_description': 'Learn how Ultoxy Technologies is transforming the hospitality operating landscape across Pune, Shirdi, and Maharashtra with InnVetrix Cloud PMS. ISO-grade security, 99.9% uptime, and dedicated expert support.',
         'meta_keywords': 'ultoxy technologies pune, hotel software company maharashtra, innvetrix creators, hospitality tech pune shirdi',
         'active_nav': 'about',
     }
@@ -139,7 +139,7 @@ def contact_view(request):
     context = {
         **BRAND_CONTEXT,
         'page_title': 'Book Free Live Demo | InnVetrix Hotel Management Software Pune, Shirdi & Maharashtra',
-        'meta_description': 'Schedule a 15-minute live personalized demonstration for your hotel or lodge in Pune, Shirdi, Mumbai or anywhere in India. Get instant trial credentials tailored to your room capacity.',
+        'meta_description': 'Schedule a personalized live demonstration for your hotel or lodge in Pune, Shirdi, Mumbai or anywhere in India. Get instant trial credentials tailored to your room capacity.',
         'meta_keywords': 'book hotel demo pune, shirdi lodge software demo, contact innvetrix, ultoxy technologies contact',
         'active_nav': 'contact',
         'form': form,
