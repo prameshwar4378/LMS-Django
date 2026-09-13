@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import connection
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Q
 from django.urls import reverse
 from django.conf import settings
 from rest_framework import __version__ as drf_version
@@ -20,6 +20,7 @@ import time
 import sys
 import platform
 import django
+import urllib.parse
 
 from .models import Property, SubscriptionPlan, PropertySubscription
 from apps.rooms.models import Room
@@ -27,6 +28,7 @@ from apps.stays.models import Stay
 from apps.bookings.models import Booking
 from apps.billing.models import Payment, Invoice
 from apps.shifts.models import Shift
+from apps.landing.models import LandingInquiry
 from apps.authentication.permissions import IsSuperUser
 
 User = get_user_model()
@@ -1568,7 +1570,168 @@ class PlatformHealthView(APIView):
                 'total_staff_users': total_users,
                 'active_staff_users': active_users,
                 'expiring_subscriptions_count': expiring_soon,
-                'expired_subscriptions_count': expired_subs
+                'expired_subscriptions_count': expired_subs,
+                'website_inquiries_count': LandingInquiry.objects.count(),
+                'website_inquiries_pending': LandingInquiry.objects.filter(is_contacted=False).count(),
             },
             'services': services
         })
+
+
+class PlatformInquiryViewSet(viewsets.ViewSet):
+    """
+    Dedicated Developer / Superuser Management Endpoint for Website Demo & Contact Inquiries.
+    Provides live querying, multi-field searching, status toggling, and admin notes management.
+    """
+    permission_classes = [IsSuperUser]
+
+    def list(self, request):
+        qs = LandingInquiry.objects.all().order_by('-created_at')
+
+        # Multi-field search
+        search = request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(full_name__icontains=search) |
+                Q(property_name__icontains=search) |
+                Q(phone__icontains=search) |
+                Q(email__icontains=search) |
+                Q(city__icontains=search) |
+                Q(message__icontains=search)
+            )
+
+        # Status filtering
+        status_filter = request.query_params.get('status', 'all').strip().lower()
+        if status_filter == 'pending':
+            qs = qs.filter(is_contacted=False)
+        elif status_filter == 'contacted':
+            qs = qs.filter(is_contacted=True)
+
+        # Service interest filtering
+        service = request.query_params.get('service_interest', '').strip()
+        if service and service != 'all':
+            qs = qs.filter(service_interest=service)
+
+        # Telemetry metrics
+        all_inquiries = LandingInquiry.objects.all()
+        now = timezone.now()
+        yesterday = now - timedelta(hours=24)
+
+        metrics = {
+            'total': all_inquiries.count(),
+            'pending': all_inquiries.filter(is_contacted=False).count(),
+            'contacted': all_inquiries.filter(is_contacted=True).count(),
+            'new_24h': all_inquiries.filter(created_at__gte=yesterday).count(),
+        }
+
+        data = []
+        for inq in qs:
+            clean_digits = ''.join(ch for ch in inq.phone if ch.isdigit())
+            if len(clean_digits) == 10:
+                clean_phone = f"91{clean_digits}"
+            elif len(clean_digits) == 12 and clean_digits.startswith('91'):
+                clean_phone = clean_digits
+            else:
+                clean_phone = clean_digits
+
+            wa_text = f"Hello {inq.full_name}, thank you for inquiring about InnVetrix PMS for {inq.property_name}. Our hospitality team would love to guide you through the features."
+            wa_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_text)}" if clean_phone else ""
+
+            data.append({
+                'id': inq.id,
+                'full_name': inq.full_name,
+                'property_name': inq.property_name,
+                'room_count': inq.room_count,
+                'phone': inq.phone,
+                'email': inq.email,
+                'city': inq.city or '',
+                'service_interest': inq.service_interest,
+                'service_interest_display': inq.get_service_interest_display(),
+                'message': inq.message or '',
+                'is_contacted': inq.is_contacted,
+                'admin_notes': inq.admin_notes or '',
+                'ip_address': inq.ip_address or '',
+                'created_at': inq.created_at.isoformat(),
+                'created_at_formatted': inq.created_at.strftime('%d %b %Y, %I:%M %p'),
+                'whatsapp_url': wa_url,
+            })
+
+        return Response({
+            'inquiries': data,
+            'metrics': metrics
+        })
+
+    def retrieve(self, request, pk=None):
+        try:
+            inq = LandingInquiry.objects.get(pk=pk)
+        except LandingInquiry.DoesNotExist:
+            return Response({'error': 'Inquiry not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({
+            'id': inq.id,
+            'full_name': inq.full_name,
+            'property_name': inq.property_name,
+            'room_count': inq.room_count,
+            'phone': inq.phone,
+            'email': inq.email,
+            'city': inq.city or '',
+            'service_interest': inq.service_interest,
+            'service_interest_display': inq.get_service_interest_display(),
+            'message': inq.message or '',
+            'is_contacted': inq.is_contacted,
+            'admin_notes': inq.admin_notes or '',
+            'ip_address': inq.ip_address or '',
+            'created_at': inq.created_at.isoformat(),
+            'created_at_formatted': inq.created_at.strftime('%d %b %Y, %I:%M %p'),
+        })
+
+    @action(detail=True, methods=['patch'])
+    def toggle_contacted(self, request, pk=None):
+        try:
+            inq = LandingInquiry.objects.get(pk=pk)
+        except LandingInquiry.DoesNotExist:
+            return Response({'error': 'Inquiry not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        inq.is_contacted = not inq.is_contacted
+        inq.save(update_fields=['is_contacted'])
+        return Response({
+            'success': True,
+            'is_contacted': inq.is_contacted,
+            'message': f"Inquiry status marked as {'Contacted' if inq.is_contacted else 'Pending'}."
+        })
+
+    @action(detail=True, methods=['patch'])
+    def update_notes(self, request, pk=None):
+        try:
+            inq = LandingInquiry.objects.get(pk=pk)
+        except LandingInquiry.DoesNotExist:
+            return Response({'error': 'Inquiry not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        notes = request.data.get('admin_notes', None)
+        if notes is not None:
+            inq.admin_notes = str(notes).strip()
+
+        is_contacted = request.data.get('is_contacted', None)
+        if is_contacted is not None:
+            inq.is_contacted = bool(is_contacted)
+
+        inq.save()
+        return Response({
+            'success': True,
+            'admin_notes': inq.admin_notes,
+            'is_contacted': inq.is_contacted,
+            'message': 'Inquiry details updated successfully.'
+        })
+
+    def destroy(self, request, pk=None):
+        try:
+            inq = LandingInquiry.objects.get(pk=pk)
+        except LandingInquiry.DoesNotExist:
+            return Response({'error': 'Inquiry not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        inq.delete()
+        return Response({
+            'success': True,
+            'message': 'Inquiry record deleted successfully.'
+        })
+
