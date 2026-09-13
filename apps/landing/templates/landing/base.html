@@ -357,83 +357,7 @@
       </div>
     </nav>
 
-    <!-- Global Animated Popup Feedback Dialogue Box -->
-    {% if messages %}
-      <div class="modal fade feedback-modal-backdrop" id="innvetrixFeedbackModal" tabindex="-1" aria-labelledby="innvetrixFeedbackModalTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content dialogue-modal-content position-relative overflow-hidden">
-            <!-- Modal Ambient Mesh Glow -->
-            <div class="dialogue-ambient-glow"></div>
 
-            {% for message in messages %}
-              <div class="p-4 p-md-5 text-center position-relative" style="z-index: 2;">
-                <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
-
-                {% if message.tags == 'error' %}
-                  <!-- Animated Error Icon Wrap -->
-                  <div class="dialogue-icon-wrap icon-error mb-4 mx-auto">
-                    <i class="bi bi-shield-exclamation"></i>
-                  </div>
-
-                  <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50 px-3 py-1 mb-2 rounded-pill small">
-                    <i class="bi bi-exclamation-octagon me-1"></i> Submission Incomplete
-                  </span>
-
-                  <h3 class="fs-4 fw-bold text-white mb-2" id="innvetrixFeedbackModalTitle">
-                    Action <span class="text-danger">Required</span>
-                  </h3>
-
-                  <p class="text-secondary fs-6 mb-4 max-w-500 mx-auto">
-                    {{ message }}
-                  </p>
-
-                  <div class="d-flex flex-column gap-2">
-                    <button type="button" class="btn-gold w-100 py-3 fs-6 justify-content-center" data-bs-dismiss="modal" onclick="focusFirstFormError()">
-                      <i class="bi bi-pencil-square me-1"></i> Review & Correct Details
-                    </button>
-                  </div>
-
-                {% else %}
-                  <!-- Animated Success Icon Wrap -->
-                  <div class="dialogue-icon-wrap icon-success mb-4 mx-auto">
-                    <i class="bi bi-check2-circle"></i>
-                  </div>
-
-                  <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 px-3 py-1 mb-2 rounded-pill small">
-                    <i class="bi bi-patch-check-fill me-1"></i> Demo Successfully Booked
-                  </span>
-
-                  <h3 class="fs-4 fw-bold text-white mb-2 font-heading" id="innvetrixFeedbackModalTitle">
-                    Inquiry Received <span class="animated-gradient-text">Successfully!</span>
-                  </h3>
-
-                  <p class="text-secondary fs-6 mb-4 max-w-500 mx-auto">
-                    {{ message }}
-                  </p>
-
-                  <!-- Dedicated Inquiry Support Card -->
-                  <div class="p-3 rounded bg-dark border border-secondary border-opacity-25 text-start mb-4">
-                    <div class="d-flex align-items-center gap-2 mb-1">
-                      <i class="bi bi-headset text-warning fs-5"></i>
-                      <strong class="text-white small">Dedicated Support Consultation:</strong>
-                    </div>
-                    <span class="text-secondary small d-block">
-                      Our hospitality solutions team will review your property requirements and reach out to you via call or WhatsApp at your submitted contact number.
-                    </span>
-                  </div>
-
-                  <div class="d-flex flex-column gap-2">
-                    <button type="button" class="btn-gold w-100 py-3 fs-6 justify-content-center" data-bs-dismiss="modal">
-                      <i class="bi bi-check-lg me-1"></i> Got It, Thank You!
-                    </button>
-                  </div>
-                {% endif %}
-              </div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-    {% endif %}
 
     <!-- Main Content Area -->
     <main>
@@ -570,6 +494,73 @@
     </footer>
 
   </div>
+
+  <!-- Global Animated Popup Feedback Dialogue Box (Direct child of <body> to prevent backdrop stacking trap) -->
+  {% if messages %}
+    <div class="modal fade feedback-modal-backdrop" id="innvetrixFeedbackModal" tabindex="-1" aria-labelledby="innvetrixFeedbackModalTitle" aria-hidden="true" style="z-index: 1065;">
+      <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+        <div class="modal-content dialogue-modal-content position-relative overflow-hidden">
+          <!-- Modal Ambient Mesh Glow -->
+          <div class="dialogue-ambient-glow"></div>
+
+          {% for message in messages %}
+            <div class="p-4 text-center position-relative" style="z-index: 2;">
+              <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 shadow-none" data-bs-dismiss="modal" onclick="closeFeedbackModal()" aria-label="Close" style="z-index: 20; cursor: pointer;"></button>
+
+              {% if message.tags == 'error' %}
+                <!-- Compact Animated Error Icon Wrap -->
+                <div class="dialogue-icon-wrap icon-error mb-3 mx-auto">
+                  <i class="bi bi-shield-exclamation"></i>
+                </div>
+
+                <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50 px-2.5 py-1 mb-2 rounded-pill small">
+                  <i class="bi bi-exclamation-octagon me-1"></i> Submission Incomplete
+                </span>
+
+                <h3 class="fs-4 fw-bold text-white mb-2" id="innvetrixFeedbackModalTitle">
+                  Action <span class="text-danger">Required</span>
+                </h3>
+
+                <p class="text-secondary fs-6 mb-3 max-w-400 mx-auto">
+                  {{ message }}
+                </p>
+
+                <div class="d-flex flex-column gap-2 mt-2">
+                  <button type="button" class="btn-gold w-100 py-2.5 fs-6 justify-content-center" data-bs-dismiss="modal" onclick="closeFeedbackModal(); focusFirstFormError();">
+                    <i class="bi bi-pencil-square me-1"></i> Review & Correct Details
+                  </button>
+                </div>
+
+              {% else %}
+                <!-- Compact Animated Success Icon Wrap -->
+                <div class="dialogue-icon-wrap icon-success mb-3 mx-auto">
+                  <i class="bi bi-check2-circle"></i>
+                </div>
+
+                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 px-2.5 py-1 mb-2 rounded-pill small">
+                  <i class="bi bi-patch-check-fill me-1"></i> Request Received
+                </span>
+
+                <h3 class="fs-4 fw-bold text-white mb-2 font-heading" id="innvetrixFeedbackModalTitle">
+                  Inquiry Received <span class="animated-gradient-text">Successfully!</span>
+                </h3>
+
+                <p class="text-secondary fs-6 mb-3 max-w-400 mx-auto">
+                  {{ message }}
+                </p>
+
+                <div class="d-flex flex-column gap-2 mt-2">
+                  <button type="button" class="btn-gold w-100 py-2.5 fs-6 justify-content-center" data-bs-dismiss="modal" onclick="closeFeedbackModal()">
+                    <i class="bi bi-check-lg me-1"></i> Got It, Close
+                  </button>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
 
   <!-- Bootstrap 5.3.3 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

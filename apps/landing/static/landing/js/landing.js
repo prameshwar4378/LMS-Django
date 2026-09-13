@@ -363,13 +363,26 @@
     const feedbackModalEl = document.getElementById('innvetrixFeedbackModal');
     if (feedbackModalEl && typeof bootstrap !== 'undefined') {
       const feedbackModal = new bootstrap.Modal(feedbackModalEl, {
-        backdrop: 'static',
+        backdrop: true,
         keyboard: true
       });
       // Small timeout to allow smooth scale-in spring animation
       setTimeout(() => {
         feedbackModal.show();
       }, 150);
+
+      // Direct event listener to guarantee 100% responsive close action on all dismiss buttons
+      feedbackModalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          window.closeFeedbackModal();
+        });
+      });
+
+      // Cleanup listener when Bootstrap finishes modal hiding
+      feedbackModalEl.addEventListener('hidden.bs.modal', () => {
+        window.closeFeedbackModal();
+      });
     }
 
     // ==========================================================================
@@ -481,6 +494,32 @@
     });
 
   }
+
+  // Global modal close function to guarantee instant dismissal & complete backdrop cleanup
+  window.closeFeedbackModal = function() {
+    const modalEl = document.getElementById('innvetrixFeedbackModal');
+    if (modalEl) {
+      if (typeof bootstrap !== 'undefined') {
+        const inst = bootstrap.Modal.getInstance(modalEl);
+        if (inst) {
+          inst.hide();
+        }
+      }
+      modalEl.classList.remove('show');
+      modalEl.setAttribute('aria-hidden', 'true');
+      modalEl.removeAttribute('aria-modal');
+      setTimeout(() => {
+        if (!modalEl.classList.contains('show')) {
+          modalEl.style.display = 'none';
+        }
+      }, 300);
+    }
+    // Clean up all backdrops & unlock page scroll immediately
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+  };
 
   // Focus helper for error modal CTA
   window.focusFirstFormError = function() {

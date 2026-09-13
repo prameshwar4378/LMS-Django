@@ -58,7 +58,7 @@ def home_view(request):
             send_inquiry_emails_async(inquiry)
             messages.success(
                 request,
-                f"Thank you, {inquiry.full_name}! Your demo request for '{inquiry.property_name}' has been successfully scheduled. Our team will review your inquiry and reach out at {inquiry.phone}."
+                f"Thank you, {inquiry.full_name}! Demo request for '{inquiry.property_name}' received. Our team will contact you shortly."
             )
             return redirect('home')
         else:
@@ -126,7 +126,7 @@ def contact_view(request):
             send_inquiry_emails_async(inquiry)
             messages.success(
                 request,
-                f"Thank you, {inquiry.full_name}! Your message regarding '{inquiry.property_name}' has been received. Our hospitality consultant will contact you via phone ({inquiry.phone}) and email shortly."
+                f"Thank you, {inquiry.full_name}! Inquiry for '{inquiry.property_name}' received. Our team will contact you shortly."
             )
             return redirect('contact')
         else:
