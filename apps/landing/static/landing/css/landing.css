@@ -1336,3 +1336,47 @@ input:checked + .slider-round:before {
     justify-content: center;
   }
 }
+
+/* ==========================================================================
+   BOT DEFENSE & CAPTCHA SECURITY BLOCK
+   ========================================================================== */
+.captcha-box {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.25s ease;
+}
+
+.captcha-box:focus-within {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+}
+
+.captcha-img-wrap {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.btn-refresh-captcha {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: var(--color-gold);
+  transition: all 0.25s ease;
+}
+
+.btn-refresh-captcha:hover {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--color-gold);
+  color: #fff;
+}
+
+.spin-fast {
+  animation: rotateSpinner 0.6s linear infinite !important;
+}
+
+@keyframes rotateSpinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

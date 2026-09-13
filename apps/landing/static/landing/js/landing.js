@@ -237,6 +237,44 @@
       }, 7000);
     });
 
+    // ==========================================================================
+    // 9. CAPTCHA 1-CLICK AJAX REFRESH
+    // ==========================================================================
+    const refreshCaptchaBtns = document.querySelectorAll('.btn-refresh-captcha');
+    refreshCaptchaBtns.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const icon = btn.querySelector('i');
+        if (icon) icon.classList.add('spin-fast');
+
+        fetch('/api/captcha/refresh/')
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === 'success') {
+              const targetImgSelector = btn.getAttribute('data-target-img');
+              const targetTokenSelector = btn.getAttribute('data-target-token');
+              
+              if (targetImgSelector) {
+                const img = document.querySelector(targetImgSelector);
+                if (img) img.src = data.challenge_svg;
+              }
+              if (targetTokenSelector) {
+                const tokenInputs = document.querySelectorAll(targetTokenSelector);
+                tokenInputs.forEach(input => { input.value = data.token; });
+              }
+            }
+          })
+          .catch(err => {
+            console.error('Error refreshing captcha challenge:', err);
+          })
+          .finally(() => {
+            setTimeout(() => {
+              if (icon) icon.classList.remove('spin-fast');
+            }, 400);
+          });
+      });
+    });
+
   }
 
   // Initialize on DOM ready or immediately if already loaded

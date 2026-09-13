@@ -1,9 +1,10 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from .forms import LandingInquiryForm
 from .models import LandingInquiry
+from .security import generate_captcha, check_ip_rate_limit
 
 BRAND_CONTEXT = {
     'brand_name': 'InnVetrix',
@@ -26,13 +27,30 @@ def get_client_ip(request):
         ip = request.META.get('REMOTE_ADDR')
     return ip
 
+def captcha_refresh_api(request):
+    """
+    Returns a fresh cryptographic arithmetic challenge and SVG image for 1-click refreshes.
+    """
+    captcha = generate_captcha()
+    return JsonResponse({
+        'status': 'success',
+        'challenge_svg': captcha['challenge_svg'],
+        'token': captcha['token'],
+    })
+
 def home_view(request):
-    form = LandingInquiryForm()
+    client_ip = get_client_ip(request)
+
     if request.method == 'POST':
+        # Rate limit enforcement (max 6 requests per 10 mins per IP)
+        if not check_ip_rate_limit(client_ip):
+            messages.error(request, "Too many submission attempts from your IP address. Please wait 10 minutes before trying again.")
+            return redirect('home')
+
         form = LandingInquiryForm(request.POST)
         if form.is_valid():
             inquiry = form.save(commit=False)
-            inquiry.ip_address = get_client_ip(request)
+            inquiry.ip_address = client_ip
             inquiry.save()
             messages.success(
                 request,
@@ -40,13 +58,18 @@ def home_view(request):
             )
             return redirect('home')
         else:
-            messages.error(request, "Please verify the information entered in the form fields.")
+            messages.error(request, "Please verify the information entered and solve the security challenge.")
+            captcha = generate_captcha()
+    else:
+        captcha = generate_captcha()
+        form = LandingInquiryForm(initial={'captcha_token': captcha['token']})
 
     context = {
         **BRAND_CONTEXT,
         'page_title': 'InnVetrix | Next-Gen Cloud Lodge & Hotel Management System',
         'active_nav': 'home',
         'form': form,
+        'captcha': captcha,
     }
     return render(request, 'landing/index.html', context)
 
@@ -75,12 +98,18 @@ def about_view(request):
     return render(request, 'landing/about.html', context)
 
 def contact_view(request):
-    form = LandingInquiryForm()
+    client_ip = get_client_ip(request)
+
     if request.method == 'POST':
+        # Rate limit enforcement (max 6 requests per 10 mins per IP)
+        if not check_ip_rate_limit(client_ip):
+            messages.error(request, "Too many submission attempts from your IP address. Please wait 10 minutes before trying again.")
+            return redirect('contact')
+
         form = LandingInquiryForm(request.POST)
         if form.is_valid():
             inquiry = form.save(commit=False)
-            inquiry.ip_address = get_client_ip(request)
+            inquiry.ip_address = client_ip
             inquiry.save()
             messages.success(
                 request,
@@ -88,13 +117,18 @@ def contact_view(request):
             )
             return redirect('contact')
         else:
-            messages.error(request, "Please correct the highlighted errors below before submitting.")
+            messages.error(request, "Please correct the highlighted errors and solve the security challenge.")
+            captcha = generate_captcha()
+    else:
+        captcha = generate_captcha()
+        form = LandingInquiryForm(initial={'captcha_token': captcha['token']})
 
     context = {
         **BRAND_CONTEXT,
         'page_title': 'Contact Us & Schedule Live Demo | InnVetrix',
         'active_nav': 'contact',
         'form': form,
+        'captcha': captcha,
     }
     return render(request, 'landing/contact.html', context)
 
@@ -109,11 +143,9 @@ def sitemap_view(request):
     ]
     xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    now_iso = timezone.now().strftime('%Y-%m-%d')
     for page in pages:
         xml_content += '  <url>\n'
         xml_content += f"    <loc>{page['loc']}</loc>\n"
-        xml_content += f"    <lastmod>{now_iso}</lastmod>\n"
         xml_content += f"    <changefreq>{page['changefreq']}</changefreq>\n"
         xml_content += f"    <priority>{page['priority']}</priority>\n"
         xml_content += '  </url>\n'
