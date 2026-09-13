@@ -1,4 +1,4 @@
-﻿/* InnVetrix Luxury SaaS Theme - Crafted by Ultoxy Technologies */
+/* InnVetrix Luxury SaaS Theme - Crafted by Ultoxy Technologies */
 :root {
   --bg-primary: #07090e;
   --bg-secondary: #0d131f;
@@ -1176,14 +1176,21 @@ input:checked + .slider-round:before {
 }
 
 .form-control::placeholder {
-  color: var(--text-muted) !important;
+  color: #94a3b8 !important;
+}
+
+.form-select option {
+  background-color: #0d131f !important;
+  color: #f8fafc !important;
+  padding: 12px 16px !important;
 }
 
 .form-label {
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: #e2e8f0;
   margin-bottom: 6px;
+  display: block;
 }
 
 /* Tape Chart Mockup Styles */
