@@ -1,25 +1,32 @@
-﻿{% extends 'landing/base.html' %}
+{% extends 'landing/base.html' %}
 {% load static %}
 
-{% block title %}Transparent Pricing & Live ROI Calculator | InnVetrix{% endblock %}
+{% block title %}Transparent & Predictable Pricing Plans | InnVetrix{% endblock %}
 
-{% block meta_description %}Simple, honest pricing for lodges and hotels. Explore Starter, Boutique Pro, and Enterprise plans with our interactive revenue ROI calculator.{% endblock %}
+{% block meta_description %}Simple, honest pricing for lodges and hotels. Explore Starter, Boutique Pro, and Enterprise plans with zero hidden fees and 0% booking commissions.{% endblock %}
 
 {% block content %}
-<!-- Pricing Header -->
+<!-- Pricing Hero Header with Shifting Gradient & Billing Frequency Toggle -->
 <section class="py-5 text-center" style="background: linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(7, 9, 14, 0.95) 100%); border-bottom: 1px solid var(--border-subtle);">
   <div class="container py-4">
-    <span class="badge-luxury mb-3">Transparent Investment</span>
-    <h1 class="display-title mb-3">
-      Invest in Efficiency. <br>
-      <span class="gradient-text-gold">Eliminate Daily Revenue Leakage.</span>
+    <div class="mb-3 reveal-on-scroll">
+      <span class="badge-luxury">
+        <span class="pulse-dot"></span>
+        Transparent & Predictable Investment
+      </span>
+    </div>
+
+    <h1 class="display-title mb-3 reveal-on-scroll">
+      Simple Pricing Built For <br>
+      <span class="animated-gradient-text">High-Profit Hospitality</span>
     </h1>
-    <p class="hero-subtitle mb-4">
-      No hidden installation fees. No surprise per-booking commissions. Simple, honest monthly or annual subscription designed to pay for itself in days.
+
+    <p class="hero-subtitle mb-4 reveal-on-scroll">
+      Zero hidden installation charges. Zero per-booking commissions. Pick the plan that matches your property scale and unlock complete operational discipline.
     </p>
 
     <!-- Billing Frequency Toggle -->
-    <div class="billing-toggle-wrap">
+    <div class="billing-toggle-wrap reveal-scale">
       <span class="billing-opt active" id="labelMonthly">Monthly Billing</span>
       <label class="switch-toggle">
         <input type="checkbox" id="billingFrequencyToggle">
@@ -33,15 +40,15 @@
   </div>
 </section>
 
-<!-- Pricing Cards Grid -->
-<div class="container py-5">
+<!-- 3 Luxury Pricing Tier Cards Grid -->
+<div class="container py-5" id="plans">
   <div class="row g-4 align-items-stretch">
     
     <!-- Tier 1: Starter Lodge -->
-    <div class="col-lg-4 col-md-6">
+    <div class="col-lg-4 col-md-6 reveal-on-scroll stagger-1">
       <div class="pricing-card">
         <h3 class="fs-4 fw-bold text-white mb-2">Starter Lodge</h3>
-        <p class="text-secondary small mb-3">Perfect for independent homestays and small lodges getting started with cloud automation.</p>
+        <p class="text-secondary small mb-3">Perfect for independent homestays, bed & breakfasts, and small lodges getting started with cloud automation.</p>
         
         <div class="price-display">
           <span class="price-currency">₹</span>
@@ -56,25 +63,26 @@
           </a>
         </div>
 
-        <span class="text-white-50 text-uppercase small fw-bold tracking-wider mb-3 d-block">Included Features:</span>
+        <span class="text-white-50 text-uppercase small fw-bold tracking-wider mb-3 d-block">Included Capabilities:</span>
         <ul class="feature-check-list">
           <li><i class="bi bi-check-circle-fill"></i> Up to <strong>15 Rooms</strong></li>
-          <li><i class="bi bi-check-circle-fill"></i> Fast Front-Desk Guest Check-in</li>
+          <li><i class="bi bi-check-circle-fill"></i> Express Front-Desk Guest Check-in</li>
+          <li><i class="bi bi-check-circle-fill"></i> Digital ID Proof Storage (Aadhaar/Passport)</li>
           <li><i class="bi bi-check-circle-fill"></i> Interactive Room Tape Chart</li>
           <li><i class="bi bi-check-circle-fill"></i> Standard Cash Drawer Logging</li>
           <li><i class="bi bi-check-circle-fill"></i> Standard A4 GST Tax Invoices</li>
-          <li><i class="bi bi-check-circle-fill"></i> Up to 3 Staff User Logins</li>
+          <li><i class="bi bi-check-circle-fill"></i> Up to 3 Staff User Accounts</li>
           <li><i class="bi bi-check-circle-fill"></i> Standard Phone & Email Support</li>
         </ul>
       </div>
     </div>
 
-    <!-- Tier 2: Boutique Pro (Featured) -->
-    <div class="col-lg-4 col-md-6">
+    <!-- Tier 2: Boutique Pro (Featured Golden Card) -->
+    <div class="col-lg-4 col-md-6 reveal-on-scroll stagger-2">
       <div class="pricing-card featured">
         <span class="badge-popular">Most Popular Choice</span>
         <h3 class="fs-4 fw-bold text-warning mb-2">Boutique Pro</h3>
-        <p class="text-secondary small mb-3">Designed for busy hotels and lodges demanding zero cash leakage and modern guest QR ordering.</p>
+        <p class="text-secondary small mb-3">Designed for busy hotels, resorts, and mid-sized lodges demanding zero cash leakage and modern guest QR ordering.</p>
         
         <div class="price-display">
           <span class="price-currency text-warning">₹</span>
@@ -96,19 +104,19 @@
           <li><i class="bi bi-check-circle-fill text-warning"></i> <strong>Mandatory Shift Handover Lockout</strong></li>
           <li><i class="bi bi-check-circle-fill text-warning"></i> <strong>Dynamic Room QR Standee Catalogue</strong></li>
           <li><i class="bi bi-check-circle-fill text-warning"></i> Dynamic Food Menu & Hotel Amenities</li>
-          <li><i class="bi bi-check-circle-fill text-warning"></i> 80mm Thermal Receipt Roll Printing</li>
-          <li><i class="bi bi-check-circle-fill text-warning"></i> Multi-Folio & Corporate Billing</li>
-          <li><i class="bi bi-check-circle-fill text-warning"></i> Unlimited Staff Logins with Roles</li>
-          <li><i class="bi bi-check-circle-fill text-warning"></i> <strong>VIP Dedicated WhatsApp Support</strong></li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> 80mm ESC/POS Thermal Receipt Printing</li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> Multi-Folio Corporate Split Billing</li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> Unlimited Staff Logins with Role Controls</li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> <strong>VIP Dedicated WhatsApp Helpline</strong></li>
         </ul>
       </div>
     </div>
 
     <!-- Tier 3: Enterprise Chain -->
-    <div class="col-lg-4 col-md-6">
+    <div class="col-lg-4 col-md-6 reveal-on-scroll stagger-3">
       <div class="pricing-card">
         <h3 class="fs-4 fw-bold text-white mb-2">Enterprise Chain</h3>
-        <p class="text-secondary small mb-3">For multi-branch hotel groups, luxury resorts, and franchises requiring centralized governance.</p>
+        <p class="text-secondary small mb-3">For multi-branch hotel chains, luxury resort groups, and franchises requiring centralized governance.</p>
         
         <div class="price-display">
           <span class="price-currency">₹</span>
@@ -139,153 +147,376 @@
   </div>
 </div>
 
-<!-- Interactive ROI Calculator Section -->
-<section class="py-5" id="roi" style="background: rgba(13, 19, 31, 0.5);">
+<!-- ========================================================================
+     WHY HOTELIERS CHOOSE INNVETRIX (VALUE PROPOSITION GRID)
+     ======================================================================== -->
+<section class="py-5" style="background: rgba(13, 19, 31, 0.6); border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);">
   <div class="container">
-    <div class="text-center max-w-700 mx-auto mb-5">
-      <span class="badge-luxury mb-2">Calculate Your Payback</span>
-      <h2 class="section-title mb-3">Interactive <span class="gradient-text-gold">ROI Calculator</span></h2>
+    <div class="text-center max-w-700 mx-auto mb-5 reveal-on-scroll">
+      <span class="badge-luxury mb-2">The InnVetrix Difference</span>
+      <h2 class="section-title mb-3">Why Independent Hoteliers <span class="animated-gradient-text">Choose InnVetrix</span></h2>
       <p class="text-secondary">
-        See how much untracked cashier leakage and front-desk clerical time you save each month with InnVetrix.
+        Designed from the ground up to protect your property's profit margins, ensure staff accountability, and minimize overhead.
       </p>
     </div>
 
-    <div class="row justify-content-center">
-      <div class="col-lg-10">
-        <div class="roi-card">
-          <div class="row g-5 align-items-center">
-            <div class="col-lg-7">
-              <!-- Slider 1: Rooms -->
-              <div class="mb-4">
-                <div class="d-flex justify-content-between mb-2">
-                  <label class="text-white fw-bold">Number of Rooms:</label>
-                  <span class="text-warning fw-bold fs-5" id="roiRoomsVal">20</span>
-                </div>
-                <input type="range" class="roi-slider" id="roiRoomsSlider" min="5" max="150" value="20" step="1">
-                <div class="d-flex justify-content-between text-secondary small mt-1">
-                  <span>5 Rooms</span>
-                  <span>150 Rooms</span>
-                </div>
-              </div>
-
-              <!-- Slider 2: Average Room Rate -->
-              <div class="mb-4">
-                <div class="d-flex justify-content-between mb-2">
-                  <label class="text-white fw-bold">Average Room Rate (Per Night):</label>
-                  <span class="text-info fw-bold fs-5" id="roiRateVal">₹1,800</span>
-                </div>
-                <input type="range" class="roi-slider" id="roiRateSlider" min="500" max="10000" value="1800" step="100">
-                <div class="d-flex justify-content-between text-secondary small mt-1">
-                  <span>₹500</span>
-                  <span>₹10,000</span>
-                </div>
-              </div>
-
-              <div class="p-3 rounded bg-dark border border-secondary border-opacity-25 small text-secondary">
-                <i class="bi bi-info-circle-fill text-warning me-1"></i> Based on hospitality industry benchmarks: ~4.5% revenue leakage prevented through shift drawer audits + ~25 hours of front-desk manual paperwork eliminated.
-              </div>
-            </div>
-
-            <div class="col-lg-5">
-              <div class="roi-output-box">
-                <span class="text-secondary text-uppercase small fw-bold tracking-wider d-block mb-1">Estimated Monthly Recovery</span>
-                <div class="roi-number mb-2" id="roiMonthlySavings">₹38,000</div>
-                <span class="text-success small fw-bold d-block mb-3">
-                  <i class="bi bi-graph-up-arrow me-1"></i> Over 15x Return on Software Cost
-                </span>
-
-                <div class="border-top border-secondary border-opacity-25 pt-3 mt-2 text-start">
-                  <div class="d-flex justify-content-between small text-secondary mb-1">
-                    <span>Projected Annual Savings:</span>
-                    <strong class="text-white" id="roiAnnualSavings">₹4,56,000</strong>
-                  </div>
-                  <div class="d-flex justify-content-between small text-secondary">
-                    <span>Software Monthly Cost:</span>
-                    <strong class="text-warning">Just ₹2,499</strong>
-                  </div>
-                </div>
-
-                <a href="{% url 'contact' %}" class="btn-gold w-100 py-2 mt-4 justify-content-center">
-                  <span>Claim Your Savings Today</span>
-                </a>
-              </div>
-            </div>
+    <div class="row g-4">
+      <!-- Pillar 1 -->
+      <div class="col-lg-3 col-md-6 reveal-on-scroll stagger-1">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box-gold mx-auto mb-3">
+            <i class="bi bi-laptop"></i>
           </div>
+          <h4 class="text-white fs-5 fw-bold mb-2">Zero Capital Expense</h4>
+          <p class="text-secondary small mb-0">
+            No expensive on-premise servers, specialized POS machines, or costly AMC contracts. InnVetrix runs smoothly on any existing computer, laptop, tablet, or smartphone.
+          </p>
+        </div>
+      </div>
+
+      <!-- Pillar 2 -->
+      <div class="col-lg-3 col-md-6 reveal-on-scroll stagger-2">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box-gold mx-auto mb-3">
+            <i class="bi bi-percent"></i>
+          </div>
+          <h4 class="text-white fs-5 fw-bold mb-2">0% Booking Commission</h4>
+          <p class="text-secondary small mb-0">
+            Unlike OTAs and commission-charging PMS vendors, we charge a flat predictable subscription. 100% of your walk-in and direct guest room revenue stays in your bank account.
+          </p>
+        </div>
+      </div>
+
+      <!-- Pillar 3 -->
+      <div class="col-lg-3 col-md-6 reveal-on-scroll stagger-3">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box-gold mx-auto mb-3">
+            <i class="bi bi-lightning-charge-fill"></i>
+          </div>
+          <h4 class="text-white fs-5 fw-bold mb-2">2-Hour Rapid Setup</h4>
+          <p class="text-secondary small mb-0">
+            Our engineering team at Ultoxy Technologies configures your room categories, room numbers, tax slabs, and staff credentials within 2 hours at zero onboarding cost.
+          </p>
+        </div>
+      </div>
+
+      <!-- Pillar 4 -->
+      <div class="col-lg-3 col-md-6 reveal-on-scroll stagger-4">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box-gold mx-auto mb-3">
+            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+          </div>
+          <h4 class="text-white fs-5 fw-bold mb-2">Full Data Ownership</h4>
+          <p class="text-secondary small mb-0">
+            No lock-in contracts. You own 100% of your guest database, booking records, and invoices. Export full records to Excel/CSV with a single click at any time.
+          </p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Detailed Feature Comparison Matrix -->
+<!-- ========================================================================
+     DETAILED CATEGORIZED FEATURE COMPARISON MATRIX
+     ======================================================================== -->
 <section class="py-5">
   <div class="container">
-    <div class="text-center max-w-700 mx-auto mb-5">
-      <span class="badge-luxury mb-2">Feature Checklist</span>
-      <h2 class="section-title mb-3">Compare All <span class="gradient-text-gold">Plan Features</span></h2>
+    <div class="text-center max-w-700 mx-auto mb-5 reveal-on-scroll">
+      <span class="badge-luxury mb-2">Feature Breakdown</span>
+      <h2 class="section-title mb-3">Complete Plan <span class="animated-gradient-text">Feature Matrix</span></h2>
+      <p class="text-secondary">Compare capabilities across all plans to select the ideal tier for your hospitality operations.</p>
     </div>
 
-    <div class="comparison-table-wrap table-responsive">
+    <div class="comparison-table-wrap table-responsive reveal-scale">
       <table class="comparison-table">
         <thead>
           <tr>
-            <th class="col-feature" style="width: 40%;">Core Feature</th>
+            <th class="col-feature" style="width: 40%;">Core Capabilities</th>
             <th class="text-center" style="width: 20%;">Starter Lodge</th>
             <th class="text-center text-warning" style="width: 20%;">Boutique Pro</th>
             <th class="text-center text-info" style="width: 20%;">Enterprise Chain</th>
           </tr>
         </thead>
         <tbody>
+          <!-- Category 1: Front Desk Operations -->
+          <tr class="table-group-header" style="background: rgba(255,255,255,0.02);">
+            <td colspan="4" class="fw-bold text-warning small text-uppercase tracking-wider py-2">
+              <i class="bi bi-person-badge me-1"></i> 1. Front Desk & Reception Operations
+            </td>
+          </tr>
           <tr>
-            <td class="col-feature">Maximum Room Capacity</td>
-            <td class="text-center text-secondary">Up to 15</td>
-            <td class="text-center text-warning fw-bold">Up to 50</td>
+            <td class="col-feature">Maximum Active Rooms</td>
+            <td class="text-center text-secondary">Up to 15 Rooms</td>
+            <td class="text-center text-warning fw-bold">Up to 50 Rooms</td>
+            <td class="text-center text-info fw-bold">Unlimited Rooms</td>
+          </tr>
+          <tr>
+            <td class="col-feature">Express Sub-45s Guest Check-In</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Govt ID Proof Cloud Upload (Aadhaar/Passport)</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Interactive Room Tape Chart & Visual Calendar</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Housekeeping Status Sync (Clean/Dirty)</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+
+          <!-- Category 2: Shift Cashier & Audit -->
+          <tr class="table-group-header" style="background: rgba(255,255,255,0.02);">
+            <td colspan="4" class="fw-bold text-warning small text-uppercase tracking-wider py-2">
+              <i class="bi bi-safe2 me-1"></i> 2. Cash Drawer & Shift Handover Audit
+            </td>
+          </tr>
+          <tr>
+            <td class="col-feature">Cash In/Out & Float Tracking</td>
+            <td class="text-center text-secondary">Basic Ledger</td>
+            <td class="text-center text-success fw-bold"><i class="bi bi-check-circle-fill fs-5"></i> Advanced</td>
+            <td class="text-center text-success fw-bold"><i class="bi bi-check-circle-fill fs-5"></i> Advanced</td>
+          </tr>
+          <tr>
+            <td class="col-feature">Mandatory Shift Handover Lockout</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success fw-bold"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success fw-bold"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Cryptographic Shift Discrepancy Log</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+
+          <!-- Category 3: Guest Experience & Digital QR -->
+          <tr class="table-group-header" style="background: rgba(255,255,255,0.02);">
+            <td colspan="4" class="fw-bold text-warning small text-uppercase tracking-wider py-2">
+              <i class="bi bi-qr-code-scan me-1"></i> 3. Contactless Guest Experience & Room QR
+            </td>
+          </tr>
+          <tr>
+            <td class="col-feature">Dynamic Digital Room QR Standee Catalogue</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Dynamic Food Menu & Amenities Showcase</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Print-Ready A4 Factsheet & Standee PDF Export</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+
+          <!-- Category 4: Invoicing & Printing -->
+          <tr class="table-group-header" style="background: rgba(255,255,255,0.02);">
+            <td colspan="4" class="fw-bold text-warning small text-uppercase tracking-wider py-2">
+              <i class="bi bi-receipt-cutoff me-1"></i> 4. GST Invoicing & Thermal Roll Printing
+            </td>
+          </tr>
+          <tr>
+            <td class="col-feature">A4 GST Tax Invoices (HSN/SAC & Tax Split)</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">80mm ESC/POS Thermal Receipt Roll Printing</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Split Folio & Corporate Account Billing</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+
+          <!-- Category 5: Multi-Branch & Governance -->
+          <tr class="table-group-header" style="background: rgba(255,255,255,0.02);">
+            <td colspan="4" class="fw-bold text-warning small text-uppercase tracking-wider py-2">
+              <i class="bi bi-diagram-3 me-1"></i> 5. Multi-Branch & Chain Governance
+            </td>
+          </tr>
+          <tr>
+            <td class="col-feature">Staff Accounts with Role Permissions</td>
+            <td class="text-center text-secondary">Up to 3</td>
+            <td class="text-center text-warning fw-bold">Unlimited</td>
             <td class="text-center text-info fw-bold">Unlimited</td>
           </tr>
           <tr>
-            <td class="col-feature">Express Front-Desk Check-In</td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
-          </tr>
-          <tr>
-            <td class="col-feature">Interactive Room Tape Chart</td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
-          </tr>
-          <tr>
-            <td class="col-feature">Anti-Theft Shift Cashier Audit</td>
-            <td class="text-center text-secondary">Basic</td>
-            <td class="text-center text-success fw-bold"><i class="bi bi-check-lg fs-5"></i> Advanced Lockout</td>
-            <td class="text-center text-success fw-bold"><i class="bi bi-check-lg fs-5"></i> Multi-Property Audit</td>
-          </tr>
-          <tr>
-            <td class="col-feature">Dynamic Room QR Standee Catalogue</td>
-            <td class="text-center text-secondary">—</td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
-          </tr>
-          <tr>
-            <td class="col-feature">80mm Thermal Receipt Printing</td>
-            <td class="text-center text-secondary">—</td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
-          </tr>
-          <tr>
-            <td class="col-feature">Multi-Property Switching</td>
+            <td class="col-feature">1-Click Multi-Property Switching Console</td>
             <td class="text-center text-secondary">—</td>
             <td class="text-center text-secondary">—</td>
-            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
           </tr>
           <tr>
-            <td class="col-feature">Dedicated Support Channel</td>
+            <td class="col-feature">Cross-Branch Consolidated Financials</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+          </tr>
+
+          <!-- Category 6: Support & SLA -->
+          <tr class="table-group-header" style="background: rgba(255,255,255,0.02);">
+            <td colspan="4" class="fw-bold text-warning small text-uppercase tracking-wider py-2">
+              <i class="bi bi-headset me-1"></i> 6. Support, Training & Cloud SLA
+            </td>
+          </tr>
+          <tr>
+            <td class="col-feature">Customer Support Channel</td>
             <td class="text-center text-secondary">Email & Phone</td>
             <td class="text-center text-warning fw-bold">VIP WhatsApp Desk</td>
             <td class="text-center text-info fw-bold">Dedicated Solutions Mgr</td>
           </tr>
+          <tr>
+            <td class="col-feature">Cloud Server Uptime Guarantee</td>
+            <td class="text-center text-secondary">99.9% SLA</td>
+            <td class="text-center text-warning fw-bold">99.95% SLA</td>
+            <td class="text-center text-info fw-bold">99.99% SLA</td>
+          </tr>
+          <tr>
+            <td class="col-feature">Personalized Staff Video Training</td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-circle-fill fs-5"></i></td>
+            <td class="text-center text-success fw-bold">On-Site & Video</td>
+          </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================================
+     SUBSCRIPTION & BILLING FAQ SECTION
+     ======================================================================== -->
+<section class="py-5" id="faq" style="background: rgba(13, 19, 31, 0.5);">
+  <div class="container">
+    <div class="text-center max-w-700 mx-auto mb-5 reveal-on-scroll">
+      <span class="badge-luxury mb-2">Got Billing Questions?</span>
+      <h2 class="section-title mb-3">Subscription & Billing <span class="animated-gradient-text">FAQ</span></h2>
+      <p class="text-secondary">Clear answers about free trials, GST input tax credits, payment modes, and scaling.</p>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-lg-9 reveal-scale">
+        <div class="accordion accordion-custom" id="pricingFAQ">
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#pfaq1">
+                How does the 14-day free trial work?
+              </button>
+            </h2>
+            <div id="pfaq1" class="accordion-collapse collapse show" data-bs-parent="#pricingFAQ">
+              <div class="accordion-body">
+                You get complete, unrestricted access to InnVetrix for 14 full days. We configure your rooms and help you test check-ins, shift audits, and room QR menus. No credit card or advance payment is required to start your trial.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pfaq2">
+                Do you provide GST tax invoices for the subscription?
+              </button>
+            </h2>
+            <div id="pfaq2" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+              <div class="accordion-body">
+                Yes! As a legitimate corporate product of <strong>Ultoxy Technologies</strong>, we issue compliant B2B GST tax invoices with your business GSTIN so you can claim 100% Input Tax Credit (ITC) under GST laws.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pfaq3">
+                Can I upgrade my room count as my lodge grows?
+              </button>
+            </h2>
+            <div id="pfaq3" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+              <div class="accordion-body">
+                Absolutely! You can start on the Starter Lodge plan and transition to Boutique Pro or Enterprise Chain with 1 click from your account dashboard. All your existing booking history, customer records, and room configurations remain completely intact.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pfaq4">
+                What payment methods do you support?
+              </button>
+            </h2>
+            <div id="pfaq4" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+              <div class="accordion-body">
+                We accept all major Indian payment methods: UPI (Google Pay, PhonePe, Paytm), Net Banking across all Indian banks, Debit/Credit Cards (Visa, Mastercard, RuPay), and direct Corporate Bank NEFT/RTGS transfers.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pfaq5">
+                Is my guest data safe if I decide to cancel?
+              </button>
+            </h2>
+            <div id="pfaq5" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+              <div class="accordion-body">
+                You maintain 100% ownership of your business data at all times. Before closing your account, you can export your entire guest database, stay histories, and invoice ledger to Excel or CSV files in one click.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- High-Impact Closing CTA Banner -->
+<section class="py-5" style="background: rgba(15, 23, 42, 0.6);">
+  <div class="container text-center py-4">
+    <div class="cta-banner reveal-scale text-center">
+      <span class="badge-luxury mb-3">Zero Risk • 14 Days Free</span>
+      <h2 class="display-5 fw-bold text-white mb-3 font-heading">
+        Ready to Transform Your Lodge <br>
+        <span class="animated-gradient-text">Into A Profit Machine?</span>
+      </h2>
+      <p class="text-secondary max-w-600 mx-auto mb-4 fs-6">
+        Claim your 14-day free trial or talk directly with our senior hospitality solutions specialist in Maharashtra.
+      </p>
+      <div class="d-flex flex-wrap justify-content-center gap-3">
+        <a href="{% url 'contact' %}" class="btn-gold px-4 py-3 fs-6">
+          <i class="bi bi-rocket-takeoff-fill"></i>
+          <span>Start Free 14-Day Trial</span>
+        </a>
+        <a href="tel:{{ phone }}" class="btn-outline-gold px-4 py-3 fs-6">
+          <i class="bi bi-telephone-fill"></i>
+          <span>Call {{ phone_display }}</span>
+        </a>
+        <a href="{{ whatsapp_url }}" target="_blank" class="btn-portal px-4 py-3 fs-6" style="border-color: #25d366; color: #25d366;">
+          <i class="bi bi-whatsapp"></i>
+          <span>Instant WhatsApp Desk</span>
+        </a>
+      </div>
     </div>
   </div>
 </section>

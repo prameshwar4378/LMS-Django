@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -136,7 +136,7 @@
             </li>
             <li class="nav-item">
               <a class="nav-link-custom {% if active_nav == 'pricing' %}active{% endif %}" href="{% url 'pricing' %}">
-                <i class="bi bi-tag me-1"></i> Pricing & ROI
+                <i class="bi bi-tag me-1"></i> Pricing Plans
               </a>
             </li>
             <li class="nav-item">
@@ -238,7 +238,7 @@
             <ul class="footer-links">
               <li><a href="{% url 'about' %}">About Ultoxy</a></li>
               <li><a href="{% url 'pricing' %}">Pricing Plans</a></li>
-              <li><a href="{% url 'pricing' %}#roi">ROI Calculator</a></li>
+              <li><a href="{% url 'pricing' %}#faq">Billing FAQ</a></li>
               <li><a href="{% url 'contact' %}">Book Live Demo</a></li>
               <li><a href="{{ portal_login_url }}" target="_blank">Staff Portal Login</a></li>
               <li><a href="{% url 'sitemap' %}">XML Sitemap</a></li>

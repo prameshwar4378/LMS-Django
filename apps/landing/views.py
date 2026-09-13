@@ -1,4 +1,4 @@
-﻿from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.http import HttpResponse
 from django.utils import timezone
@@ -61,7 +61,7 @@ def features_view(request):
 def pricing_view(request):
     context = {
         **BRAND_CONTEXT,
-        'page_title': 'Transparent Pricing & ROI Calculator | InnVetrix',
+        'page_title': 'Transparent & Predictable Pricing Plans | InnVetrix',
         'active_nav': 'pricing',
     }
     return render(request, 'landing/pricing.html', context)
