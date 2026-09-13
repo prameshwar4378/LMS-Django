@@ -179,42 +179,57 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ==========================================================================
-   SCROLL REVEAL & DYNAMIC ANIMATION ENGINE
+   SCROLL REVEAL & DYNAMIC ANIMATION ENGINE (FAIL-SAFE PROGRESSIVE ENHANCEMENT)
    ========================================================================== */
-.reveal-on-scroll {
-  opacity: 0;
-  transform: translateY(35px);
-  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
-}
-
-.reveal-left {
-  opacity: 0;
-  transform: translateX(-40px);
-  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
-}
-
-.reveal-right {
-  opacity: 0;
-  transform: translateX(40px);
-  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
-}
-
+/* Default state: All elements are 100% visible so content NEVER appears blank */
+.reveal-on-scroll,
+.reveal-left,
+.reveal-right,
 .reveal-scale {
-  opacity: 0;
-  transform: scale(0.92);
-  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 1;
+  transform: translate(0, 0) scale(1);
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1), transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: opacity, transform;
+}
+
+/* When JS animation engine initializes, prime unrevealed elements for scroll transition */
+.js-reveal .reveal-on-scroll:not(.is-revealed) {
+  opacity: 0;
+  transform: translateY(28px);
+}
+
+.js-reveal .reveal-left:not(.is-revealed) {
+  opacity: 0;
+  transform: translateX(-32px);
+}
+
+.js-reveal .reveal-right:not(.is-revealed) {
+  opacity: 0;
+  transform: translateX(32px);
+}
+
+.js-reveal .reveal-scale:not(.is-revealed) {
+  opacity: 0;
+  transform: scale(0.94);
 }
 
 .reveal-on-scroll.is-revealed,
 .reveal-left.is-revealed,
 .reveal-right.is-revealed,
 .reveal-scale.is-revealed {
-  opacity: 1;
-  transform: translate(0, 0) scale(1);
+  opacity: 1 !important;
+  transform: translate(0, 0) scale(1) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll,
+  .reveal-left,
+  .reveal-right,
+  .reveal-scale {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 /* Stagger delays for grid items */
