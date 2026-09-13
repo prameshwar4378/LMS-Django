@@ -442,6 +442,44 @@
       });
     });
 
+    // ==========================================================================
+    // 13. DARK & LIGHT THEME TOGGLE CONTROLLER
+    // ==========================================================================
+    const themeButtons = document.querySelectorAll('#themeToggleBtn, .mobile-theme-btn');
+
+    function getCurrentTheme() {
+      return document.documentElement.getAttribute('data-theme') || 'dark';
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      try {
+        localStorage.setItem('innvetrix_theme', theme);
+      } catch (err) {}
+
+      themeButtons.forEach(btn => {
+        const nextMode = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+        btn.setAttribute('title', `Switch to ${nextMode}`);
+        btn.setAttribute('aria-label', `Switch to ${nextMode}`);
+      });
+    }
+
+    // Initialize aria-labels for buttons
+    const currentActiveTheme = getCurrentTheme();
+    themeButtons.forEach(btn => {
+      const nextMode = currentActiveTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+      btn.setAttribute('title', `Switch to ${nextMode}`);
+      btn.setAttribute('aria-label', `Switch to ${nextMode}`);
+    });
+
+    themeButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const nextTheme = getCurrentTheme() === 'dark' ? 'light' : 'dark';
+        applyTheme(nextTheme);
+      });
+    });
+
   }
 
   // Focus helper for error modal CTA

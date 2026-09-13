@@ -170,7 +170,17 @@
     ]
   }
   </script>
-  {% block extra_head %}{% endblock %}
+  <!-- Instant Theme Initializer (Zero Flash) -->
+  <script>
+    (function() {
+      try {
+        var theme = localStorage.getItem('innvetrix_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
 
   <!-- Critical Inline Preloader Styles (Prevents FOUC / White Flash) -->
   <style>
@@ -188,6 +198,9 @@
       opacity: 1;
       visibility: visible;
       transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.55s ease;
+    }
+    [data-theme="light"] #page-preloader {
+      background-color: #f8fafc;
     }
     #page-preloader.is-loaded {
       opacity: 0;
@@ -280,10 +293,16 @@
           </div>
         </a>
 
-        <!-- Mobile Toggler -->
-        <button class="navbar-toggler border-0 shadow-none text-white" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
-          <i class="bi bi-list fs-1 text-warning"></i>
-        </button>
+        <!-- Mobile Actions: Theme Toggle + Hamburger Toggler -->
+        <div class="d-flex align-items-center gap-2 d-lg-none">
+          <button type="button" class="btn-theme-toggle mobile-theme-btn" aria-label="Toggle light and dark theme" title="Switch Theme">
+            <i class="bi bi-moon-stars-fill theme-icon-dark"></i>
+            <i class="bi bi-sun-fill theme-icon-light"></i>
+          </button>
+          <button class="navbar-toggler border-0 shadow-none text-white p-1" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-list fs-1 text-warning"></i>
+          </button>
+        </div>
 
         <!-- Navigation Links & CTAs -->
         <div class="collapse navbar-collapse" id="navbarMain">
@@ -316,6 +335,12 @@
           </ul>
 
           <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+            <!-- Desktop Theme Toggle Button -->
+            <button type="button" class="btn-theme-toggle d-none d-lg-inline-flex" id="themeToggleBtn" aria-label="Toggle light and dark theme" title="Switch Theme">
+              <i class="bi bi-moon-stars-fill theme-icon-dark"></i>
+              <i class="bi bi-sun-fill theme-icon-light"></i>
+            </button>
+
             <!-- Client Portal Link (React SPA) -->
             <a href="{{ portal_login_url }}" target="_blank" rel="noopener noreferrer" class="btn-portal" title="Open Lodge Staff & Admin Dashboard">
               <i class="bi bi-box-arrow-in-right"></i>
