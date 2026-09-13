@@ -1,0 +1,300 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ page_title|default:"InnVetrix | Next-Gen Cloud Lodge & Hotel Management System" }}{% endblock %}</title>
+  
+  <!-- Primary SEO Meta Tags -->
+  <meta name="description" content="{% block meta_description %}InnVetrix is the premier all-in-one cloud Lodge & Hotel Management System engineered by Ultoxy Technologies. Featuring Front-Desk PMS, Interactive Tape Chart, Anti-Theft Shift Cashier Audits, Dynamic Room QR Catalogues, and GST Invoicing.{% endblock %}">
+  <meta name="keywords" content="InnVetrix, lodge management system, hotel pms software, cloud lodge software, hotel reception software, room booking system, shift drawer audit, room service qr code, hotel gst billing, ultoxy technologies, stay ahead beyond expectations">
+  <meta name="author" content="Ultoxy Technologies">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <link rel="canonical" href="{{ request.build_absolute_uri }}">
+
+  <!-- OpenGraph / Facebook / WhatsApp Meta Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ request.build_absolute_uri }}">
+  <meta property="og:title" content="InnVetrix — Stay Ahead. Beyond Expectations.">
+  <meta property="og:description" content="Next-Gen Cloud Lodge & Hotel PMS with Tape Chart, Shift Drawer Audit, and Dynamic Room QR Catalogue. Engineered by Ultoxy Technologies.">
+  <meta property="og:site_name" content="InnVetrix Hospitality Cloud">
+
+  <!-- Twitter Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="InnVetrix — Stay Ahead. Beyond Expectations.">
+  <meta name="twitter:description" content="All-in-one modern Lodge & Hotel PMS software. Fast check-ins, zero revenue leaks, dynamic room QR standees.">
+
+  <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5.3.3 & Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- Custom Luxury Stylesheet -->
+  <link rel="stylesheet" href="{% static 'landing/css/landing.css' %}">
+
+  <!-- JSON-LD Structured Data Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "InnVetrix",
+        "operatingSystem": "Cloud-based, Cross-Platform (Web, Mobile, Tablet)",
+        "applicationCategory": "BusinessApplication",
+        "headline": "Stay Ahead. Beyond Expectations.",
+        "description": "Next-Generation Cloud Lodge and Hotel Management System with front desk PMS, room calendar, cash drawer audit, and dynamic QR catalogue.",
+        "offers": {
+          "@type": "AggregateOffer",
+          "priceCurrency": "INR",
+          "lowPrice": "999",
+          "highPrice": "2499",
+          "offerCount": "3"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.9",
+          "reviewCount": "142",
+          "bestRating": "5"
+        },
+        "creator": {
+          "@type": "Organization",
+          "name": "Ultoxy Technologies",
+          "url": "https://www.ultoxy.com"
+        }
+      },
+      {
+        "@type": "Organization",
+        "name": "Ultoxy Technologies",
+        "url": "https://www.ultoxy.com",
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "telephone": "+917776824564",
+          "contactType": "customer service",
+          "areaServed": "IN",
+          "availableLanguage": ["English", "Hindi", "Marathi"]
+        }
+      }
+    ]
+  }
+  </script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Ambient Light Orbs -->
+  <div class="ambient-mesh">
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+    <div class="ambient-orb orb-3"></div>
+  </div>
+
+  <div class="site-wrapper">
+
+    <!-- Top Announcement Ribbon -->
+    <div class="py-2 text-center text-sm" style="background: linear-gradient(90deg, #1e1b4b, #0f172a, #1e1b4b); border-bottom: 1px solid rgba(245, 158, 11, 0.2); font-size: 0.8rem;">
+      <span class="text-white-50">✨ Introducing <strong class="text-white">InnVetrix 2.0</strong> by <a href="https://www.ultoxy.com" target="_blank" class="text-warning text-decoration-none fw-bold">Ultoxy Technologies</a> — The Cloud PMS built for smart hoteliers.</span>
+      <span class="ms-3 d-none d-md-inline text-white-50">Direct Helpline: <a href="tel:{{ phone }}" class="text-white fw-bold text-decoration-none"><i class="bi bi-telephone-fill text-warning me-1"></i>{{ phone_display }}</a></span>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-glass">
+      <div class="container">
+        <!-- Brand Logo -->
+        <a class="brand-logo-wrap" href="{% url 'home' %}">
+          <div class="brand-icon">
+            <i class="bi bi-building"></i>
+          </div>
+          <div class="brand-text">
+            <span class="brand-title">InnVetrix</span>
+            <span class="brand-tagline">{{ tagline }}</span>
+          </div>
+        </a>
+
+        <!-- Mobile Toggler -->
+        <button class="navbar-toggler border-0 shadow-none text-white" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+          <i class="bi bi-list fs-1 text-warning"></i>
+        </button>
+
+        <!-- Navigation Links & CTAs -->
+        <div class="collapse navbar-collapse" id="navbarMain">
+          <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-1">
+            <li class="nav-item">
+              <a class="nav-link-custom {% if active_nav == 'home' %}active{% endif %}" href="{% url 'home' %}">
+                <i class="bi bi-house-door me-1"></i> Home
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link-custom {% if active_nav == 'features' %}active{% endif %}" href="{% url 'features' %}">
+                <i class="bi bi-grid me-1"></i> Features
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link-custom {% if active_nav == 'pricing' %}active{% endif %}" href="{% url 'pricing' %}">
+                <i class="bi bi-tag me-1"></i> Pricing & ROI
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link-custom {% if active_nav == 'about' %}active{% endif %}" href="{% url 'about' %}">
+                <i class="bi bi-info-circle me-1"></i> About Us
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link-custom {% if active_nav == 'contact' %}active{% endif %}" href="{% url 'contact' %}">
+                <i class="bi bi-chat-dots me-1"></i> Contact
+              </a>
+            </li>
+          </ul>
+
+          <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+            <!-- Client Portal Link (React SPA) -->
+            <a href="{{ portal_login_url }}" target="_blank" rel="noopener noreferrer" class="btn-portal" title="Open Lodge Staff & Admin Dashboard">
+              <i class="bi bi-box-arrow-in-right"></i>
+              <span>Client Login</span>
+            </a>
+
+            <!-- Book Demo Button -->
+            <a href="{% url 'contact' %}" class="btn-gold">
+              <i class="bi bi-calendar2-check"></i>
+              <span>Book Live Demo</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Global Flash Messages Notification -->
+    <div class="container mt-3">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show shadow-lg border-0" role="alert" style="background: rgba(16, 185, 129, 0.15); border-left: 4px solid #10b981 !important; color: #6ee7b7; backdrop-filter: blur(12px);">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi {% if message.tags == 'error' %}bi-exclamation-triangle-fill text-danger{% else %}bi-check-circle-fill text-success{% endif %} fs-5"></i>
+              <div>{{ message }}</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <!-- Main Content Area -->
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Floating WhatsApp Helpline Button -->
+    <a href="{{ whatsapp_url }}" target="_blank" rel="noopener noreferrer" class="whatsapp-float-btn" title="Chat with InnVetrix Specialist on WhatsApp">
+      <i class="bi bi-whatsapp"></i>
+    </a>
+
+    <!-- Global Mega Footer -->
+    <footer class="footer-main">
+      <div class="container">
+        <div class="row g-4 mb-5">
+          <!-- Column 1: Brand Info -->
+          <div class="col-lg-4 col-md-6">
+            <a class="brand-logo-wrap mb-3" href="{% url 'home' %}">
+              <div class="brand-icon">
+                <i class="bi bi-building"></i>
+              </div>
+              <div class="brand-text">
+                <span class="brand-title text-white">InnVetrix</span>
+                <span class="brand-tagline">{{ tagline }}</span>
+              </div>
+            </a>
+            <p class="text-secondary small pe-lg-4 mt-2">
+              InnVetrix is an enterprise-grade hospitality operating platform engineered by <strong>Ultoxy Technologies</strong>. Built specifically for independent lodges, boutique hotels, and chain resorts to streamline check-ins, eliminate cashier leaks, and elevate guest satisfaction.
+            </p>
+            <div class="d-flex align-items-center gap-3 mt-3">
+              <a href="https://www.ultoxy.com" target="_blank" class="badge-luxury text-decoration-none">
+                <i class="bi bi-shield-check"></i> Verified by Ultoxy
+              </a>
+              <span class="text-secondary small"><i class="bi bi-patch-check-fill text-success"></i> ISO-Grade Reliability</span>
+            </div>
+          </div>
+
+          <!-- Column 2: Core Solutions -->
+          <div class="col-lg-2 col-md-6 col-6">
+            <h5 class="footer-heading">Solutions</h5>
+            <ul class="footer-links">
+              <li><a href="{% url 'features' %}#frontdesk">Front-Desk PMS</a></li>
+              <li><a href="{% url 'features' %}#tapechart">Tape Chart & Calendar</a></li>
+              <li><a href="{% url 'features' %}#cashier">Shift Drawer Audit</a></li>
+              <li><a href="{% url 'features' %}#catalogue">Digital QR Catalogue</a></li>
+              <li><a href="{% url 'features' %}#billing">Split GST Invoicing</a></li>
+              <li><a href="{% url 'features' %}#chain">Multi-Branch Chain</a></li>
+            </ul>
+          </div>
+
+          <!-- Column 3: Quick Navigation -->
+          <div class="col-lg-2 col-md-6 col-6">
+            <h5 class="footer-heading">Company</h5>
+            <ul class="footer-links">
+              <li><a href="{% url 'about' %}">About Ultoxy</a></li>
+              <li><a href="{% url 'pricing' %}">Pricing Plans</a></li>
+              <li><a href="{% url 'pricing' %}#roi">ROI Calculator</a></li>
+              <li><a href="{% url 'contact' %}">Book Live Demo</a></li>
+              <li><a href="{{ portal_login_url }}" target="_blank">Staff Portal Login</a></li>
+              <li><a href="{% url 'sitemap' %}">XML Sitemap</a></li>
+            </ul>
+          </div>
+
+          <!-- Column 4: Direct Helplines -->
+          <div class="col-lg-4 col-md-6">
+            <h5 class="footer-heading">Direct Contact & Desk</h5>
+            
+            <a href="tel:{{ phone }}" class="footer-contact-card">
+              <i class="bi bi-telephone-fill"></i>
+              <span><strong>Call Support:</strong> {{ phone_display }}</span>
+            </a>
+
+            <a href="{{ whatsapp_url }}" target="_blank" class="footer-contact-card">
+              <i class="bi bi-whatsapp text-success"></i>
+              <span><strong>WhatsApp Desk:</strong> +91 77768 24564 (24/7)</span>
+            </a>
+
+            <a href="mailto:{{ email }}" class="footer-contact-card">
+              <i class="bi bi-envelope-fill"></i>
+              <span><strong>Email Inquiries:</strong> {{ email }}</span>
+            </a>
+
+            <a href="{{ website }}" target="_blank" class="footer-contact-card">
+              <i class="bi bi-globe2"></i>
+              <span><strong>Official Website:</strong> www.ultoxy.com</span>
+            </a>
+
+            <div class="mt-3 p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle);">
+              <span class="text-white-50 small d-block mb-1"><i class="bi bi-clock-history text-warning me-1"></i> Response Guarantee:</span>
+              <span class="text-white small fw-bold">Live demo request attended within 15 minutes.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Bottom Bar -->
+        <div class="footer-bottom d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+          <div>
+            &copy; {{ year }} <strong>InnVetrix</strong>. All rights reserved. A flagship software product of <a href="https://www.ultoxy.com" target="_blank" class="text-warning text-decoration-none fw-bold">Ultoxy Technologies</a>.
+          </div>
+          <div class="d-flex align-items-center gap-4">
+            <span class="text-secondary small">Security: 256-Bit TLS Encryption</span>
+            <span class="text-secondary small">SLA: 99.9% Uptime</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Bootstrap 5.3.3 Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Custom Interaction Script -->
+  <script src="{% static 'landing/js/landing.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,292 @@
+﻿{% extends 'landing/base.html' %}
+{% load static %}
+
+{% block title %}Transparent Pricing & Live ROI Calculator | InnVetrix{% endblock %}
+
+{% block meta_description %}Simple, honest pricing for lodges and hotels. Explore Starter, Boutique Pro, and Enterprise plans with our interactive revenue ROI calculator.{% endblock %}
+
+{% block content %}
+<!-- Pricing Header -->
+<section class="py-5 text-center" style="background: linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(7, 9, 14, 0.95) 100%); border-bottom: 1px solid var(--border-subtle);">
+  <div class="container py-4">
+    <span class="badge-luxury mb-3">Transparent Investment</span>
+    <h1 class="display-title mb-3">
+      Invest in Efficiency. <br>
+      <span class="gradient-text-gold">Eliminate Daily Revenue Leakage.</span>
+    </h1>
+    <p class="hero-subtitle mb-4">
+      No hidden installation fees. No surprise per-booking commissions. Simple, honest monthly or annual subscription designed to pay for itself in days.
+    </p>
+
+    <!-- Billing Frequency Toggle -->
+    <div class="billing-toggle-wrap">
+      <span class="billing-opt active" id="labelMonthly">Monthly Billing</span>
+      <label class="switch-toggle">
+        <input type="checkbox" id="billingFrequencyToggle">
+        <span class="slider-round"></span>
+      </label>
+      <span class="billing-opt" id="labelAnnual">
+        Annual Billing 
+        <span class="badge bg-success bg-opacity-25 text-success border border-success ms-1 small">Save 20%</span>
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing Cards Grid -->
+<div class="container py-5">
+  <div class="row g-4 align-items-stretch">
+    
+    <!-- Tier 1: Starter Lodge -->
+    <div class="col-lg-4 col-md-6">
+      <div class="pricing-card">
+        <h3 class="fs-4 fw-bold text-white mb-2">Starter Lodge</h3>
+        <p class="text-secondary small mb-3">Perfect for independent homestays and small lodges getting started with cloud automation.</p>
+        
+        <div class="price-display">
+          <span class="price-currency">₹</span>
+          <span class="price-value" id="starterPrice">999</span>
+          <span class="price-period" id="starterPeriod">/ month</span>
+        </div>
+
+        <div class="mb-4">
+          <a href="{% url 'contact' %}?plan=starter" class="btn-portal w-100 justify-content-center py-3">
+            <span>Start 14-Day Free Trial</span>
+            <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+
+        <span class="text-white-50 text-uppercase small fw-bold tracking-wider mb-3 d-block">Included Features:</span>
+        <ul class="feature-check-list">
+          <li><i class="bi bi-check-circle-fill"></i> Up to <strong>15 Rooms</strong></li>
+          <li><i class="bi bi-check-circle-fill"></i> Fast Front-Desk Guest Check-in</li>
+          <li><i class="bi bi-check-circle-fill"></i> Interactive Room Tape Chart</li>
+          <li><i class="bi bi-check-circle-fill"></i> Standard Cash Drawer Logging</li>
+          <li><i class="bi bi-check-circle-fill"></i> Standard A4 GST Tax Invoices</li>
+          <li><i class="bi bi-check-circle-fill"></i> Up to 3 Staff User Logins</li>
+          <li><i class="bi bi-check-circle-fill"></i> Standard Phone & Email Support</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Tier 2: Boutique Pro (Featured) -->
+    <div class="col-lg-4 col-md-6">
+      <div class="pricing-card featured">
+        <span class="badge-popular">Most Popular Choice</span>
+        <h3 class="fs-4 fw-bold text-warning mb-2">Boutique Pro</h3>
+        <p class="text-secondary small mb-3">Designed for busy hotels and lodges demanding zero cash leakage and modern guest QR ordering.</p>
+        
+        <div class="price-display">
+          <span class="price-currency text-warning">₹</span>
+          <span class="price-value text-warning" id="boutiquePrice">2,499</span>
+          <span class="price-period" id="boutiquePeriod">/ month</span>
+        </div>
+
+        <div class="mb-4">
+          <a href="{% url 'contact' %}?plan=boutique" class="btn-gold w-100 justify-content-center py-3">
+            <i class="bi bi-rocket-takeoff-fill"></i>
+            <span>Get Started with Pro</span>
+          </a>
+        </div>
+
+        <span class="text-warning text-uppercase small fw-bold tracking-wider mb-3 d-block">Everything in Starter, Plus:</span>
+        <ul class="feature-check-list">
+          <li><i class="bi bi-check-circle-fill text-warning"></i> Up to <strong>50 Rooms</strong></li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> <strong>Anti-Theft Shift Cashier Drawer Audit</strong></li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> <strong>Mandatory Shift Handover Lockout</strong></li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> <strong>Dynamic Room QR Standee Catalogue</strong></li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> Dynamic Food Menu & Hotel Amenities</li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> 80mm Thermal Receipt Roll Printing</li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> Multi-Folio & Corporate Billing</li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> Unlimited Staff Logins with Roles</li>
+          <li><i class="bi bi-check-circle-fill text-warning"></i> <strong>VIP Dedicated WhatsApp Support</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Tier 3: Enterprise Chain -->
+    <div class="col-lg-4 col-md-6">
+      <div class="pricing-card">
+        <h3 class="fs-4 fw-bold text-white mb-2">Enterprise Chain</h3>
+        <p class="text-secondary small mb-3">For multi-branch hotel groups, luxury resorts, and franchises requiring centralized governance.</p>
+        
+        <div class="price-display">
+          <span class="price-currency">₹</span>
+          <span class="price-value fs-2">Custom</span>
+          <span class="price-period">/ tailored quote</span>
+        </div>
+
+        <div class="mb-4">
+          <a href="{% url 'contact' %}?plan=enterprise" class="btn-portal w-100 justify-content-center py-3">
+            <span>Contact Enterprise Sales</span>
+            <i class="bi bi-headset"></i>
+          </a>
+        </div>
+
+        <span class="text-white-50 text-uppercase small fw-bold tracking-wider mb-3 d-block">Enterprise Capabilities:</span>
+        <ul class="feature-check-list">
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Unlimited Rooms & Branches</strong></li>
+          <li><i class="bi bi-check-circle-fill"></i> Centralized Multi-Property Owner Console</li>
+          <li><i class="bi bi-check-circle-fill"></i> Cross-Property Revenue & Audit Reports</li>
+          <li><i class="bi bi-check-circle-fill"></i> Custom Accounting & Channel Manager Sync</li>
+          <li><i class="bi bi-check-circle-fill"></i> Dedicated Account Solutions Engineer</li>
+          <li><i class="bi bi-check-circle-fill"></i> 99.99% Enterprise Uptime SLA</li>
+          <li><i class="bi bi-check-circle-fill"></i> On-Site Staff Onboarding & Setup</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Interactive ROI Calculator Section -->
+<section class="py-5" id="roi" style="background: rgba(13, 19, 31, 0.5);">
+  <div class="container">
+    <div class="text-center max-w-700 mx-auto mb-5">
+      <span class="badge-luxury mb-2">Calculate Your Payback</span>
+      <h2 class="section-title mb-3">Interactive <span class="gradient-text-gold">ROI Calculator</span></h2>
+      <p class="text-secondary">
+        See how much untracked cashier leakage and front-desk clerical time you save each month with InnVetrix.
+      </p>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="roi-card">
+          <div class="row g-5 align-items-center">
+            <div class="col-lg-7">
+              <!-- Slider 1: Rooms -->
+              <div class="mb-4">
+                <div class="d-flex justify-content-between mb-2">
+                  <label class="text-white fw-bold">Number of Rooms:</label>
+                  <span class="text-warning fw-bold fs-5" id="roiRoomsVal">20</span>
+                </div>
+                <input type="range" class="roi-slider" id="roiRoomsSlider" min="5" max="150" value="20" step="1">
+                <div class="d-flex justify-content-between text-secondary small mt-1">
+                  <span>5 Rooms</span>
+                  <span>150 Rooms</span>
+                </div>
+              </div>
+
+              <!-- Slider 2: Average Room Rate -->
+              <div class="mb-4">
+                <div class="d-flex justify-content-between mb-2">
+                  <label class="text-white fw-bold">Average Room Rate (Per Night):</label>
+                  <span class="text-info fw-bold fs-5" id="roiRateVal">₹1,800</span>
+                </div>
+                <input type="range" class="roi-slider" id="roiRateSlider" min="500" max="10000" value="1800" step="100">
+                <div class="d-flex justify-content-between text-secondary small mt-1">
+                  <span>₹500</span>
+                  <span>₹10,000</span>
+                </div>
+              </div>
+
+              <div class="p-3 rounded bg-dark border border-secondary border-opacity-25 small text-secondary">
+                <i class="bi bi-info-circle-fill text-warning me-1"></i> Based on hospitality industry benchmarks: ~4.5% revenue leakage prevented through shift drawer audits + ~25 hours of front-desk manual paperwork eliminated.
+              </div>
+            </div>
+
+            <div class="col-lg-5">
+              <div class="roi-output-box">
+                <span class="text-secondary text-uppercase small fw-bold tracking-wider d-block mb-1">Estimated Monthly Recovery</span>
+                <div class="roi-number mb-2" id="roiMonthlySavings">₹38,000</div>
+                <span class="text-success small fw-bold d-block mb-3">
+                  <i class="bi bi-graph-up-arrow me-1"></i> Over 15x Return on Software Cost
+                </span>
+
+                <div class="border-top border-secondary border-opacity-25 pt-3 mt-2 text-start">
+                  <div class="d-flex justify-content-between small text-secondary mb-1">
+                    <span>Projected Annual Savings:</span>
+                    <strong class="text-white" id="roiAnnualSavings">₹4,56,000</strong>
+                  </div>
+                  <div class="d-flex justify-content-between small text-secondary">
+                    <span>Software Monthly Cost:</span>
+                    <strong class="text-warning">Just ₹2,499</strong>
+                  </div>
+                </div>
+
+                <a href="{% url 'contact' %}" class="btn-gold w-100 py-2 mt-4 justify-content-center">
+                  <span>Claim Your Savings Today</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Detailed Feature Comparison Matrix -->
+<section class="py-5">
+  <div class="container">
+    <div class="text-center max-w-700 mx-auto mb-5">
+      <span class="badge-luxury mb-2">Feature Checklist</span>
+      <h2 class="section-title mb-3">Compare All <span class="gradient-text-gold">Plan Features</span></h2>
+    </div>
+
+    <div class="comparison-table-wrap table-responsive">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th class="col-feature" style="width: 40%;">Core Feature</th>
+            <th class="text-center" style="width: 20%;">Starter Lodge</th>
+            <th class="text-center text-warning" style="width: 20%;">Boutique Pro</th>
+            <th class="text-center text-info" style="width: 20%;">Enterprise Chain</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col-feature">Maximum Room Capacity</td>
+            <td class="text-center text-secondary">Up to 15</td>
+            <td class="text-center text-warning fw-bold">Up to 50</td>
+            <td class="text-center text-info fw-bold">Unlimited</td>
+          </tr>
+          <tr>
+            <td class="col-feature">Express Front-Desk Check-In</td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Interactive Room Tape Chart</td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Anti-Theft Shift Cashier Audit</td>
+            <td class="text-center text-secondary">Basic</td>
+            <td class="text-center text-success fw-bold"><i class="bi bi-check-lg fs-5"></i> Advanced Lockout</td>
+            <td class="text-center text-success fw-bold"><i class="bi bi-check-lg fs-5"></i> Multi-Property Audit</td>
+          </tr>
+          <tr>
+            <td class="col-feature">Dynamic Room QR Standee Catalogue</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">80mm Thermal Receipt Printing</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Multi-Property Switching</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-secondary">—</td>
+            <td class="text-center text-success"><i class="bi bi-check-lg fs-5"></i></td>
+          </tr>
+          <tr>
+            <td class="col-feature">Dedicated Support Channel</td>
+            <td class="text-center text-secondary">Email & Phone</td>
+            <td class="text-center text-warning fw-bold">VIP WhatsApp Desk</td>
+            <td class="text-center text-info fw-bold">Dedicated Solutions Mgr</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

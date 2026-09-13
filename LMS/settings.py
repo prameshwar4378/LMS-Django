@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'apps.settings_app',
     'apps.shifts',
     'apps.catalogue',
+    'apps.landing',
 ]
 
 AUTH_USER_MODEL = 'authentication.User'
@@ -62,7 +63,7 @@ ROOT_URLCONF = 'LMS.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'apps' / 'landing' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -129,6 +130,9 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [
+    BASE_DIR / 'apps' / 'landing' / 'static',
+]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'

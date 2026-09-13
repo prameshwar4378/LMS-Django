@@ -1,0 +1,301 @@
+﻿{% extends 'landing/base.html' %}
+{% load static %}
+
+{% block title %}Solutions & Architecture | InnVetrix Hospitality Cloud{% endblock %}
+
+{% block meta_description %}Explore InnVetrix's six core engines: Front Desk PMS, Interactive Room Tape Chart, Anti-Theft Shift Cashier Drawer, Dynamic QR Catalogue, Split GST Invoicing, and Multi-Branch Chain Controls.{% endblock %}
+
+{% block content %}
+<!-- Features Hero Header -->
+<section class="py-5 text-center" style="background: linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(7, 9, 14, 0.95) 100%); border-bottom: 1px solid var(--border-subtle);">
+  <div class="container py-4">
+    <span class="badge-luxury mb-3">Complete Functional Blueprint</span>
+    <h1 class="display-title mb-3">
+      Engineered for Speed, Precision, and <br>
+      <span class="gradient-text-gold">Zero Operational Friction</span>
+    </h1>
+    <p class="hero-subtitle mb-4">
+      Discover how each module in InnVetrix eliminates manual bottlenecks, protects your property's daily revenue, and empowers your staff to deliver 5-star hospitality.
+    </p>
+    <div class="d-flex justify-content-center gap-3">
+      <a href="{% url 'contact' %}" class="btn-gold">
+        <i class="bi bi-calendar2-check"></i>
+        <span>Request Guided Walkthrough</span>
+      </a>
+      <a href="{% url 'pricing' %}" class="btn-outline-gold">
+        <i class="bi bi-tag"></i>
+        <span>View Pricing Tiers</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Deep Dive Sections -->
+<div class="container py-5">
+  
+  <!-- Module 1: Front Desk & Stay Lifecycle -->
+  <section class="py-5" id="frontdesk">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <div class="icon-box-gold">
+          <i class="bi bi-person-badge"></i>
+        </div>
+        <span class="text-warning text-uppercase small fw-bold tracking-wider">Module 01</span>
+        <h2 class="section-title mb-3">Front-Desk & Guest Stay Lifecycle Engine</h2>
+        <p class="text-secondary mb-4">
+          The front desk is your lodge's command center. InnVetrix transforms reception from a paper-clogged bottleneck into a sleek, lightning-fast digital check-in terminal.
+        </p>
+        <ul class="feature-check-list mb-4">
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Sub-45s Express Check-In:</strong> Register walk-ins or advance bookings in seconds with auto-filling guest profiles.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Digital ID Proof Capture:</strong> Snap or upload government photo IDs (Aadhaar, Voter Card, Passport) directly into encrypted storage.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Stay Extensions & Room Swaps:</strong> Effortlessly extend guest stay dates or upgrade/swap rooms with automated folio adjustments.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Guest History & Blacklisting:</strong> Instant alerts for VIP repeat guests, preferences, or past payment defaulters.</li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <div class="glass-card p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+            <span class="text-white fw-bold"><i class="bi bi-person-check-fill text-warning me-2"></i> Active Stay Folio #ST-8402</span>
+            <span class="badge bg-success bg-opacity-25 text-success border border-success">Checked In</span>
+          </div>
+          <div class="row g-3 small text-secondary">
+            <div class="col-6">Guest: <strong class="text-white d-block">Amitabh Verma</strong></div>
+            <div class="col-6">Room: <strong class="text-white d-block">Deluxe Room 204</strong></div>
+            <div class="col-6">Dates: <strong class="text-white d-block">13 Sep - 16 Sep (3 Nts)</strong></div>
+            <div class="col-6">Billing: <strong class="text-white d-block">₹7,500 + GST</strong></div>
+          </div>
+          <div class="mt-4 p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle);">
+            <div class="d-flex justify-content-between text-secondary small mb-1">
+              <span>Advance Paid:</span>
+              <span class="text-success fw-bold">₹3,000 (UPI)</span>
+            </div>
+            <div class="d-flex justify-content-between text-secondary small mb-2">
+              <span>Balance Due at Checkout:</span>
+              <span class="text-warning fw-bold">₹4,950</span>
+            </div>
+            <div class="progress" style="height: 6px;">
+              <div class="progress-bar bg-warning" role="progressbar" style="width: 40%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="border-secondary border-opacity-25 my-4">
+
+  <!-- Module 2: Interactive Tape Chart -->
+  <section class="py-5" id="tapechart">
+    <div class="row align-items-center g-5 flex-lg-row-reverse">
+      <div class="col-lg-6">
+        <div class="icon-box-gold">
+          <i class="bi bi-calendar3"></i>
+        </div>
+        <span class="text-warning text-uppercase small fw-bold tracking-wider">Module 02</span>
+        <h2 class="section-title mb-3">Interactive Room Tape Chart & Visual Calendar</h2>
+        <p class="text-secondary mb-4">
+          Replace physical charts and whiteboard markers with our interactive color-coded tape chart. View your entire property's availability, upcoming bookings, and housekeeping status in real time.
+        </p>
+        <ul class="feature-check-list mb-4">
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Drag & Drop Allocations:</strong> Reassign guest rooms or shift booking dates seamlessly on the calendar matrix.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Zero Double-Bookings:</strong> Concurrent booking locking prevents conflicting allocations across receptionists.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Housekeeping Sync:</strong> Instantly tag rooms as Clean, Dirty, Maintenance, or Under Inspection so front desk never assigns unready rooms.</li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <div class="glass-card p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-white fw-bold"><i class="bi bi-grid-3x3-gap-fill text-info me-2"></i> Real-Time Tape Chart</span>
+            <span class="badge bg-warning bg-opacity-25 text-warning border border-warning">Live Sync</span>
+          </div>
+          <div class="p-3 rounded bg-dark border border-secondary border-opacity-25">
+            <div class="d-flex justify-content-between small text-secondary mb-2">
+              <span>Room 101 (Deluxe)</span>
+              <span class="text-success"><i class="bi bi-circle-fill" style="font-size: 8px;"></i> Clean</span>
+            </div>
+            <div class="p-2 rounded mb-2 text-white small" style="background: rgba(16, 185, 129, 0.2); border-left: 3px solid #10b981;">
+              <strong>Stay:</strong> Vikram S. (Sep 13 - 15) • ₹4,800
+            </div>
+            <div class="d-flex justify-content-between small text-secondary mb-2 mt-3">
+              <span>Room 102 (Deluxe)</span>
+              <span class="text-warning"><i class="bi bi-circle-fill" style="font-size: 8px;"></i> Housekeeping Pending</span>
+            </div>
+            <div class="p-2 rounded text-white small" style="background: rgba(245, 158, 11, 0.2); border-left: 3px solid #f59e0b;">
+              <strong>Reserved:</strong> Corporate Stay TCS (Sep 14 - 18)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="border-secondary border-opacity-25 my-4">
+
+  <!-- Module 3: Shift Drawer Audit -->
+  <section class="py-5" id="cashier">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <div class="icon-box-gold">
+          <i class="bi bi-safe2"></i>
+        </div>
+        <span class="text-warning text-uppercase small fw-bold tracking-wider">Module 03</span>
+        <h2 class="section-title mb-3">Anti-Theft Shift Cashier & Drawer Lockout Audit</h2>
+        <p class="text-secondary mb-4">
+          Cash leakage during shift changes is the #1 silent profit drain in the lodge business. InnVetrix enforces iron-clad financial discipline between reception staff.
+        </p>
+        <ul class="feature-check-list mb-4">
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Mandatory Opening Float:</strong> Cashier must verify opening cash before processing any customer transactions.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Multi-Mode Split Reconciliation:</strong> Every transaction is categorized by Cash, UPI QR, Card, or Bank NEFT.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Discrepancy Lockout & Handover Note:</strong> If physical cash does not match system collections, cashier cannot close drawer without manager override and explanatory note.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Owner Audit Log:</strong> Every paid-out expense or petty cash withdrawal requires recipient signature and reason.</li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <div class="glass-card p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+            <span class="text-white fw-bold"><i class="bi bi-lock-fill text-warning me-2"></i> Shift Drawer Reconciliation</span>
+            <span class="badge bg-info bg-opacity-25 text-info border border-info">Shift A (Morning)</span>
+          </div>
+          <div class="space-y-2 small">
+            <div class="d-flex justify-content-between py-1 text-secondary">
+              <span>Opening Float:</span>
+              <span class="text-white">₹5,000.00</span>
+            </div>
+            <div class="d-flex justify-content-between py-1 text-secondary">
+              <span>Total Cash Collected:</span>
+              <span class="text-success fw-bold">+ ₹24,500.00</span>
+            </div>
+            <div class="d-flex justify-content-between py-1 text-secondary">
+              <span>UPI / QR Collections:</span>
+              <span class="text-info fw-bold">+ ₹18,200.00</span>
+            </div>
+            <div class="d-flex justify-content-between py-1 text-secondary">
+              <span>Petty Cash Paid Out (Laundry):</span>
+              <span class="text-danger fw-bold">- ₹1,200.00</span>
+            </div>
+            <div class="d-flex justify-content-between py-2 border-top border-secondary border-opacity-25 text-white fw-bold">
+              <span>Physical Cash Expected:</span>
+              <span class="text-warning fs-6">₹28,300.00</span>
+            </div>
+          </div>
+          <div class="alert alert-success mt-3 py-2 px-3 mb-0 small bg-success bg-opacity-10 border border-success border-opacity-25 text-success">
+            <i class="bi bi-patch-check-fill me-1"></i> Shift Handover Verified: Zero Discrepancy Recorded
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="border-secondary border-opacity-25 my-4">
+
+  <!-- Module 4: Dynamic Room QR Catalogue -->
+  <section class="py-5" id="catalogue">
+    <div class="row align-items-center g-5 flex-lg-row-reverse">
+      <div class="col-lg-6">
+        <div class="icon-box-gold">
+          <i class="bi bi-qr-code-scan"></i>
+        </div>
+        <span class="text-warning text-uppercase small fw-bold tracking-wider">Module 04</span>
+        <h2 class="section-title mb-3">Dynamic Digital Room QR Standee Catalogue</h2>
+        <p class="text-secondary mb-4">
+          Empower guests to explore your property amenities, order room service food, view nearby attractions, and download official factsheets — directly from their phone.
+        </p>
+        <ul class="feature-check-list mb-4">
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Zero App Download:</strong> Guests simply scan your room QR standee using default iOS or Android camera app.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>100% Dynamic Admin Control:</strong> Add food dishes, change prices, update Wi-Fi passwords, and upload high-res photo galleries instantly.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>A4 Factsheet & PDF Export:</strong> Generate print-ready promotional PDFs and physical standee designs in 1 click.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Direct Room Service Desk:</strong> Orders and requests route immediately to your kitchen or reception display.</li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <div class="glass-card p-4 text-center">
+          <div class="p-3 bg-white d-inline-block rounded-3 shadow mb-3">
+            <i class="bi bi-qr-code text-dark" style="font-size: 110px;"></i>
+          </div>
+          <h4 class="text-white fs-5 fw-bold mb-1">Room 204 • Digital Standee</h4>
+          <p class="text-secondary small mb-3">Scan to view Hotel Menu, Wi-Fi Password & Tour Desk</p>
+          <div class="d-flex justify-content-center gap-2">
+            <span class="badge bg-dark border border-secondary text-light px-3 py-2"><i class="bi bi-cup-hot-fill text-warning me-1"></i> Room Dining</span>
+            <span class="badge bg-dark border border-secondary text-light px-3 py-2"><i class="bi bi-wifi text-info me-1"></i> Free High-Speed</span>
+            <span class="badge bg-dark border border-secondary text-light px-3 py-2"><i class="bi bi-geo-alt-fill text-success me-1"></i> Nearby Transit</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="border-secondary border-opacity-25 my-4">
+
+  <!-- Module 5: Split Invoicing & Thermal Printing -->
+  <section class="py-5" id="billing">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <div class="icon-box-gold">
+          <i class="bi bi-receipt-cutoff"></i>
+        </div>
+        <span class="text-warning text-uppercase small fw-bold tracking-wider">Module 05</span>
+        <h2 class="section-title mb-3">Split Invoicing & Thermal Roll Printing</h2>
+        <p class="text-secondary mb-4">
+          Effortlessly handle complex lodge billing scenarios: advance deposits, split bills between roommates, extra bed charges, and corporate GST billing.
+        </p>
+        <ul class="feature-check-list mb-4">
+          <li><i class="bi bi-check-circle-fill"></i> <strong>80mm Thermal Receipt Printing:</strong> Instant ESC/POS compatible thermal receipt roll generation for reception counter.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Full A4 GST Tax Invoices:</strong> Complete tax breakdown with CGST, SGST, IGST, HSN/SAC codes, and QR code verification.</li>
+          <li><i class="bi bi-check-circle-fill"></i> <strong>Split Invoicing & Multi-Folio:</strong> Split room charges and food charges between multiple company accounts or co-occupants.</li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <div class="glass-card p-4">
+          <div class="p-3 bg-dark rounded border border-secondary border-opacity-25 font-monospace text-secondary small">
+            <div class="text-center text-white border-bottom border-secondary border-opacity-25 pb-2 mb-2">
+              <strong class="d-block fs-6">ROYAL RESIDENCY LODGE</strong>
+              <span>GSTIN: 27AABCR1234F1Z8</span><br>
+              <span>Tax Invoice #INV-2026-089</span>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span>Room 101 (2 Nts):</span>
+              <span class="text-white">₹3,600.00</span>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span>Room Service Dining:</span>
+              <span class="text-white">₹650.00</span>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span>CGST (6%) + SGST (6%):</span>
+              <span class="text-white">₹510.00</span>
+            </div>
+            <div class="d-flex justify-content-between border-top border-secondary border-opacity-25 pt-2 mt-2 text-white fw-bold">
+              <span>TOTAL AMOUNT:</span>
+              <span class="text-warning">₹4,760.00</span>
+            </div>
+            <div class="text-center mt-3 text-white-50">
+              *** Thank You for Staying With Us ***
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- High Impact Closing CTA -->
+<section class="py-5" style="background: rgba(15, 23, 42, 0.6); border-top: 1px solid var(--border-subtle);">
+  <div class="container text-center py-4">
+    <h2 class="display-6 fw-bold text-white mb-3">Ready to Experience InnVetrix Live?</h2>
+    <p class="text-secondary max-w-600 mx-auto mb-4">
+      Schedule a customized demonstration for your property with our hospitality solutions team.
+    </p>
+    <div class="d-flex justify-content-center gap-3">
+      <a href="{% url 'contact' %}" class="btn-gold px-4 py-3">
+        <i class="bi bi-calendar2-check"></i>
+        <span>Book Free Demo Now</span>
+      </a>
+      <a href="tel:{{ phone }}" class="btn-outline-gold px-4 py-3">
+        <i class="bi bi-telephone-fill"></i>
+        <span>Call {{ phone_display }}</span>
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}

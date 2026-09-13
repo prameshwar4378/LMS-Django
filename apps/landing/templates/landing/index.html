@@ -1,0 +1,615 @@
+﻿{% extends 'landing/base.html' %}
+{% load static %}
+
+{% block title %}InnVetrix | Next-Gen Cloud Lodge & Hotel Management System{% endblock %}
+
+{% block content %}
+<!-- 1. Hero Section -->
+<section class="hero-section text-center">
+  <div class="container">
+    <!-- Top Floating Tag -->
+    <div class="mb-3">
+      <span class="badge-luxury">
+        <span class="pulse-dot"></span>
+        Next-Generation Hospitality Operating System
+      </span>
+    </div>
+
+    <!-- Main Headline -->
+    <h1 class="display-title mb-3">
+      Turn Your Lodge Into A <br>
+      <span class="gradient-text-gold">High-Revenue, Zero-Theft</span> Engine.
+    </h1>
+
+    <!-- Subtitle -->
+    <p class="hero-subtitle">
+      Eliminate paperwork chaos, stop cashier drawer leakage, and delight your guests with <strong class="text-white">InnVetrix</strong> — the cloud PMS engineered by <strong>Ultoxy Technologies</strong> with instant check-ins, interactive room tape charts, tamper-proof shift audits, and dynamic room QR catalogues.
+    </p>
+
+    <!-- Action Buttons -->
+    <div class="d-flex flex-wrap align-items-center justify-content-center gap-3 mb-4">
+      <a href="{% url 'contact' %}" class="btn-gold px-4 py-3 fs-6">
+        <i class="bi bi-rocket-takeoff-fill"></i>
+        <span>Book 1-on-1 Free Live Demo</span>
+      </a>
+      <a href="{% url 'features' %}" class="btn-outline-gold px-4 py-3 fs-6">
+        <i class="bi bi-play-circle-fill"></i>
+        <span>Explore Solutions & Modules</span>
+      </a>
+      <a href="{{ whatsapp_url }}" target="_blank" class="btn-portal px-3 py-3" style="border-color: #25d366; color: #25d366;">
+        <i class="bi bi-whatsapp"></i>
+        <span>Quick WhatsApp Chat</span>
+      </a>
+    </div>
+
+    <!-- Floating Metrics Strip -->
+    <div class="hero-metrics-pill">
+      <div class="metric-item">
+        <i class="bi bi-lightning-charge-fill text-warning"></i>
+        <span><strong>3x Faster</strong> Reception Check-in</span>
+      </div>
+      <span class="text-white-50 d-none d-sm-inline">•</span>
+      <div class="metric-item">
+        <i class="bi bi-shield-lock-fill text-info"></i>
+        <span><strong>0% Discrepancy</strong> Shift Cash Drawer</span>
+      </div>
+      <span class="text-white-50 d-none d-sm-inline">•</span>
+      <div class="metric-item">
+        <i class="bi bi-qr-code-scan text-success"></i>
+        <span><strong>100% Dynamic</strong> Room QR Catalogue</span>
+      </div>
+      <span class="text-white-50 d-none d-sm-inline">•</span>
+      <div class="metric-item">
+        <i class="bi bi-headset text-warning"></i>
+        <span><strong>24/7 Helpline:</strong> {{ phone_display }}</span>
+      </div>
+    </div>
+
+    <!-- Product Showcase Preview (Mockup Frame) -->
+    <div class="mockup-wrapper text-start">
+      <div class="mockup-inner">
+        <!-- Mockup Browser Header -->
+        <div class="mockup-header">
+          <div class="mockup-dots">
+            <span class="dot-red"></span>
+            <span class="dot-yellow"></span>
+            <span class="dot-green"></span>
+          </div>
+          <div class="mockup-address">
+            https://innvetrix.ultoxy.com/dashboard/tape-chart
+          </div>
+          <div class="text-secondary small d-flex align-items-center gap-2">
+            <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 px-2 py-1"><i class="bi bi-circle-fill me-1" style="font-size: 6px;"></i> Live Operational Grid</span>
+          </div>
+        </div>
+
+        <!-- Simulated PMS Tape Chart Content -->
+        <div class="p-3 p-md-4" style="background: #090d16;">
+          <div class="row g-3 mb-3">
+            <div class="col-md-3 col-6">
+              <div class="p-3 rounded" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2);">
+                <span class="text-secondary small d-block">Occupancy Rate</span>
+                <span class="fs-4 fw-bold text-warning">86.4%</span>
+                <span class="text-success small d-block"><i class="bi bi-arrow-up-short"></i> +14% vs last week</span>
+              </div>
+            </div>
+            <div class="col-md-3 col-6">
+              <div class="p-3 rounded" style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2);">
+                <span class="text-secondary small d-block">Active Stays</span>
+                <span class="fs-4 fw-bold text-info">24 Rooms</span>
+                <span class="text-secondary small d-block">4 Check-outs Pending</span>
+              </div>
+            </div>
+            <div class="col-md-3 col-6">
+              <div class="p-3 rounded" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
+                <span class="text-secondary small d-block">Today's Revenue</span>
+                <span class="fs-4 fw-bold text-success">₹42,850</span>
+                <span class="text-white-50 small d-block">Shift A Audit: Cleared</span>
+              </div>
+            </div>
+            <div class="col-md-3 col-6">
+              <div class="p-3 rounded" style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-subtle);">
+                <span class="text-secondary small d-block">Shift Cashier</span>
+                <span class="fs-5 fw-bold text-white">Drawer #1 Active</span>
+                <span class="text-warning small d-block"><i class="bi bi-lock-fill"></i> Float Reconciled</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Grid Simulation -->
+          <div class="tapechart-grid border border-secondary border-opacity-25 rounded bg-dark bg-opacity-50">
+            <div class="tapechart-cell-header">Room</div>
+            <div class="tapechart-cell-header">Today</div>
+            <div class="tapechart-cell-header">Tomorrow</div>
+            <div class="tapechart-cell-header">Day 3</div>
+            <div class="tapechart-cell-header">Day 4</div>
+            <div class="tapechart-cell-header">Day 5</div>
+
+            <!-- Row 101 -->
+            <div class="tapechart-cell-room">101 • Dlx</div>
+            <div class="tapechart-cell-stay" style="grid-column: span 3;"><i class="bi bi-person-fill"></i> Rahul Sharma (2 Nights)</div>
+            <div class="tapechart-cell-booked" style="grid-column: span 2;"><i class="bi bi-clock-fill"></i> Ananya Patel</div>
+
+            <!-- Row 102 -->
+            <div class="tapechart-cell-room">102 • Sup</div>
+            <div class="tapechart-cell-booked" style="grid-column: span 2;"><i class="bi bi-clock-fill"></i> Corporate Booking (TCS)</div>
+            <div class="tapechart-cell-avail">Vacant</div>
+            <div class="tapechart-cell-stay" style="grid-column: span 2;"><i class="bi bi-person-fill"></i> Vikram Malhotra</div>
+
+            <!-- Row 201 -->
+            <div class="tapechart-cell-room">201 • Suite</div>
+            <div class="tapechart-cell-avail">Vacant</div>
+            <div class="tapechart-cell-stay" style="grid-column: span 4;"><i class="bi bi-star-fill text-warning"></i> Dr. Sanjay Kulkarni (VIP)</div>
+          </div>
+
+          <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-2 border-top border-secondary border-opacity-25 text-secondary small">
+            <div class="d-flex align-items-center gap-3">
+              <span><span class="badge bg-success bg-opacity-25 text-success border border-success me-1">■</span> Occupied Stay</span>
+              <span><span class="badge bg-warning bg-opacity-25 text-warning border border-warning me-1">■</span> Confirmed Booking</span>
+              <span><span class="badge bg-secondary bg-opacity-25 text-light border border-secondary me-1">□</span> Clean & Ready</span>
+            </div>
+            <div class="text-white-50">
+              ⚡ Real-time synchronization powered by InnVetrix Cloud
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Credibility & Numbers Bar -->
+<section class="py-5" style="background: rgba(13, 19, 31, 0.6); border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);">
+  <div class="container">
+    <div class="row g-4 text-center">
+      <div class="col-lg-3 col-6">
+        <h2 class="display-6 fw-bold text-white mb-1 font-heading">50,000+</h2>
+        <span class="text-secondary small text-uppercase tracking-wider">Guest Check-Ins Managed</span>
+      </div>
+      <div class="col-lg-3 col-6">
+        <h2 class="display-6 fw-bold text-warning mb-1 font-heading">₹15+ Cr</h2>
+        <span class="text-secondary small text-uppercase tracking-wider">Audited Revenue Tracked</span>
+      </div>
+      <div class="col-lg-3 col-6">
+        <h2 class="display-6 fw-bold text-info mb-1 font-heading">99.99%</h2>
+        <span class="text-secondary small text-uppercase tracking-wider">Cloud Server Uptime</span>
+      </div>
+      <div class="col-lg-3 col-6">
+        <h2 class="display-6 fw-bold text-success mb-1 font-heading">&lt; 15 Mins</h2>
+        <span class="text-secondary small text-uppercase tracking-wider">Dedicated Support Response</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. Core Modules & Solutions Grid -->
+<section class="py-5 my-4" id="solutions">
+  <div class="container">
+    <div class="text-center max-w-700 mx-auto mb-5">
+      <span class="badge-luxury mb-2">Hospitality Powerhouse</span>
+      <h2 class="section-title mb-3">Six Specialized Engines. <span class="gradient-text-gold">One Unified Platform.</span></h2>
+      <p class="text-secondary">
+        Every module in InnVetrix is designed with input from veteran lodge owners and front-office cashiers to solve everyday bottlenecks.
+      </p>
+    </div>
+
+    <div class="row g-4">
+      <!-- Card 1: Front Desk -->
+      <div class="col-lg-4 col-md-6">
+        <div class="glass-card">
+          <div class="icon-box-gold">
+            <i class="bi bi-person-badge"></i>
+          </div>
+          <h3 class="card-title-lg">Front-Desk & Stay Lifecycle</h3>
+          <p class="card-text-muted">
+            Instant guest check-in with ID photo upload, room key assignment, stay extensions, and 1-click express check-outs.
+          </p>
+          <ul class="feature-check-list">
+            <li><i class="bi bi-check-circle-fill"></i> Express check-in under 45 seconds</li>
+            <li><i class="bi bi-check-circle-fill"></i> Government ID proof capture (Aadhaar/Passport)</li>
+            <li><i class="bi bi-check-circle-fill"></i> Stay history & repeat guest recognition</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Card 2: Interactive Tape Chart -->
+      <div class="col-lg-4 col-md-6">
+        <div class="glass-card">
+          <div class="icon-box-gold">
+            <i class="bi bi-calendar3"></i>
+          </div>
+          <h3 class="card-title-lg">Interactive Room Tape Chart</h3>
+          <p class="card-text-muted">
+            A visual, high-speed multi-room calendar. Drag-and-drop bookings, view occupancy rates, and spot room maintenance states at a glance.
+          </p>
+          <ul class="feature-check-list">
+            <li><i class="bi bi-check-circle-fill"></i> Real-time color-coded room status grid</li>
+            <li><i class="bi bi-check-circle-fill"></i> Prevent double-booking permanently</li>
+            <li><i class="bi bi-check-circle-fill"></i> Housekeeping clean/dirty status tracker</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Card 3: Shift Drawer Audit -->
+      <div class="col-lg-4 col-md-6">
+        <div class="glass-card">
+          <div class="icon-box-gold">
+            <i class="bi bi-safe2"></i>
+          </div>
+          <h3 class="card-title-lg">Anti-Theft Shift Cashier Audit</h3>
+          <p class="card-text-muted">
+            Lockdown your cash drawer. Every shift requires opening float declaration, records all cash in/out, and mandates handover verification.
+          </p>
+          <ul class="feature-check-list">
+            <li><i class="bi bi-check-circle-fill"></i> Zero untracked cash leakage</li>
+            <li><i class="bi bi-check-circle-fill"></i> Shift handover notes & manager sign-off</li>
+            <li><i class="bi bi-check-circle-fill"></i> Audit trail of every payment mode (Cash/UPI/Card)</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Card 4: Dynamic Room QR Catalogue -->
+      <div class="col-lg-4 col-md-6">
+        <div class="glass-card">
+          <div class="icon-box-gold">
+            <i class="bi bi-qr-code-scan"></i>
+          </div>
+          <h3 class="card-title-lg">Dynamic Guest QR Catalogue</h3>
+          <p class="card-text-muted">
+            Place branded QR standees in rooms. Guests scan with their smartphones to view dynamic food menus, hotel amenities, photo galleries, and local transit.
+          </p>
+          <ul class="feature-check-list">
+            <li><i class="bi bi-check-circle-fill"></i> 100% dynamic — manage from dashboard</li>
+            <li><i class="bi bi-check-circle-fill"></i> Print-ready A4 factsheet & PDF generator</li>
+            <li><i class="bi bi-check-circle-fill"></i> Zero app installation needed by guests</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Card 5: Split GST Billing -->
+      <div class="col-lg-4 col-md-6">
+        <div class="glass-card">
+          <div class="icon-box-gold">
+            <i class="bi bi-receipt-cutoff"></i>
+          </div>
+          <h3 class="card-title-lg">Split Invoicing & Thermal Printing</h3>
+          <p class="card-text-muted">
+            Generate compliant GST invoices in seconds. Support for split billing between roommates, corporate GST billing, and instant 80mm thermal receipt roll printing.
+          </p>
+          <ul class="feature-check-list">
+            <li><i class="bi bi-check-circle-fill"></i> 80mm ESC/POS thermal receipt printing</li>
+            <li><i class="bi bi-check-circle-fill"></i> Detailed A4 GST tax invoices with HSN codes</li>
+            <li><i class="bi bi-check-circle-fill"></i> Advance deposit adjustments & refund tracking</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Card 6: Multi-Branch Chain Governance -->
+      <div class="col-lg-4 col-md-6">
+        <div class="glass-card">
+          <div class="icon-box-gold">
+            <i class="bi bi-diagram-3"></i>
+          </div>
+          <h3 class="card-title-lg">Multi-Branch Chain Controls</h3>
+          <p class="card-text-muted">
+            Manage multiple lodges, hotels, or resort branches from a single owner login. Switch properties instantly with centralized financial intelligence.
+          </p>
+          <ul class="feature-check-list">
+            <li><i class="bi bi-check-circle-fill"></i> Multi-tenant isolation for security</li>
+            <li><i class="bi bi-check-circle-fill"></i> Role-based permissions (Cashier, Manager, Owner)</li>
+            <li><i class="bi bi-check-circle-fill"></i> Consolidated executive revenue reports</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-5">
+      <a href="{% url 'features' %}" class="btn-outline-gold px-4 py-2">
+        <span>View Full Technical Architecture</span>
+        <i class="bi bi-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Comparison Section: Old Register vs InnVetrix -->
+<section class="py-5" style="background: rgba(13, 19, 31, 0.4);">
+  <div class="container">
+    <div class="text-center max-w-700 mx-auto mb-5">
+      <span class="badge-luxury mb-2">The Modern Advantage</span>
+      <h2 class="section-title mb-3">Manual Registers vs. <span class="gradient-text-gold">InnVetrix Cloud</span></h2>
+      <p class="text-secondary">See why lodges across India are retiring pen-and-paper ledgers and clunky offline desktop systems.</p>
+    </div>
+
+    <div class="comparison-table-wrap table-responsive">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th class="col-feature" style="width: 32%;">Operational Feature</th>
+            <th class="text-danger" style="width: 34%;"><i class="bi bi-x-circle-fill me-2"></i> Paper Register / Legacy Desktop</th>
+            <th class="text-warning" style="width: 34%;"><i class="bi bi-check-circle-fill me-2"></i> InnVetrix Hospitality Cloud</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col-feature">Check-in Processing Time</td>
+            <td class="col-legacy">8 to 12 minutes of manual book-entry & photocopying</td>
+            <td class="col-innvetrix"><i class="bi bi-check2-circle text-success me-1"></i> Under 45 seconds with instant digital ID capture</td>
+          </tr>
+          <tr>
+            <td class="col-feature">Shift Cashier Accountability</td>
+            <td class="col-legacy">Unchecked cash pocketing; frequent shift discrepancies</td>
+            <td class="col-innvetrix"><i class="bi bi-check2-circle text-success me-1"></i> Strict opening float, handover audit lock & timestamping</td>
+          </tr>
+          <tr>
+            <td class="col-feature">Room Calendar & Occupancy</td>
+            <td class="col-legacy">Messy whiteboards or eraser marks; double bookings</td>
+            <td class="col-innvetrix"><i class="bi bi-check2-circle text-success me-1"></i> Interactive color-coded Tape Chart synced in real-time</td>
+          </tr>
+          <tr>
+            <td class="col-feature">Guest Room Service & Menus</td>
+            <td class="col-legacy">Dirty paper menus, lost intercom calls, outdated prices</td>
+            <td class="col-innvetrix"><i class="bi bi-check2-circle text-success me-1"></i> Dynamic Room QR Standees with live photos & instant menu</td>
+          </tr>
+          <tr>
+            <td class="col-feature">Invoicing & GST Compliance</td>
+            <td class="col-legacy">Manual calculation errors, delayed bills, tax audit nightmares</td>
+            <td class="col-innvetrix"><i class="bi bi-check2-circle text-success me-1"></i> 1-click 80mm thermal receipt & GST compliant A4 invoices</td>
+          </tr>
+          <tr>
+            <td class="col-feature">Owner Remote Monitoring</td>
+            <td class="col-legacy">Owner must physically be at front desk to know collection</td>
+            <td class="col-innvetrix"><i class="bi bi-check2-circle text-success me-1"></i> Live smartphone dashboard with 24/7 revenue & occupancy tracking</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Testimonial Section -->
+<section class="py-5 my-4">
+  <div class="container">
+    <div class="text-center max-w-700 mx-auto mb-5">
+      <span class="badge-luxury mb-2">Real Stories</span>
+      <h2 class="section-title mb-3">Loved By <span class="gradient-text-gold">Hoteliers & Lodge Owners</span></h2>
+      <p class="text-secondary">Here is how InnVetrix transformed daily front-desk operations and stopped revenue leaks.</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-4 col-md-6">
+        <div class="testimonial-card">
+          <div class="star-rating">
+            <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+          </div>
+          <p class="testimonial-quote">
+            "Before InnVetrix, our night-shift cash drawer was always ₹1,000 to ₹2,000 short. The Shift Drawer Audit feature completely resolved this. It paid for itself in the first 10 days!"
+          </p>
+          <div class="testimonial-author">
+            <div class="avatar-circle">M</div>
+            <div>
+              <h5 class="mb-0 text-white fs-6">Mahesh Deshmukh</h5>
+              <span class="text-secondary small">Owner, Hilltop Residency (32 Rooms)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4 col-md-6">
+        <div class="testimonial-card">
+          <div class="star-rating">
+            <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+          </div>
+          <p class="testimonial-quote">
+            "Our guests love scanning the QR standee in their rooms. They can see our amenities, local sightseeing, and order room food without having to call reception multiple times."
+          </p>
+          <div class="testimonial-author">
+            <div class="avatar-circle">R</div>
+            <div>
+              <h5 class="mb-0 text-white fs-6">Rohit Aggarwal</h5>
+              <span class="text-secondary small">General Manager, Grand Heritage Inn</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4 col-md-6">
+        <div class="testimonial-card">
+          <div class="star-rating">
+            <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+          </div>
+          <p class="testimonial-quote">
+            "The customer service from Ultoxy Technologies is unmatched. When we had a thermal printer setup question at 11 PM on a weekend, their helpline resolved it in 5 minutes."
+          </p>
+          <div class="testimonial-author">
+            <div class="avatar-circle">S</div>
+            <div>
+              <h5 class="mb-0 text-white fs-6">Sunita Rathore</h5>
+              <span class="text-secondary small">Managing Partner, Rathore Palace Stays</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Interactive FAQ Section -->
+<section class="py-5" style="background: rgba(13, 19, 31, 0.5);">
+  <div class="container">
+    <div class="text-center max-w-700 mx-auto mb-5">
+      <span class="badge-luxury mb-2">Got Questions?</span>
+      <h2 class="section-title mb-3">Frequently Asked <span class="gradient-text-gold">Questions</span></h2>
+      <p class="text-secondary">Everything you need to know about setting up InnVetrix for your property.</p>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-lg-9">
+        <div class="accordion accordion-custom" id="landingFAQ">
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                Do I need to buy expensive servers or new hardware?
+              </button>
+            </h2>
+            <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#landingFAQ">
+              <div class="accordion-body">
+                <strong>No expensive hardware needed at all!</strong> InnVetrix is 100% cloud-hosted. It runs smoothly on any existing desktop computer, laptop, tablet, or smartphone via Google Chrome or modern web browsers. You only need a standard internet connection and an optional 80mm thermal receipt printer if you want physical receipts.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                Does InnVetrix support 80mm thermal receipt printers?
+              </button>
+            </h2>
+            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#landingFAQ">
+              <div class="accordion-body">
+                Yes! InnVetrix features built-in support for standard 80mm / 3-inch ESC/POS thermal printers as well as full-size A4 GST tax invoices with your lodge logo, GSTIN, HSN codes, and tax breakdown.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                How does the Shift Cashier Drawer audit stop embezzlement?
+              </button>
+            </h2>
+            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#landingFAQ">
+              <div class="accordion-body">
+                When a receptionist starts their duty, they must enter the opening cash float. Every incoming payment (Cash, UPI, Card, Bank Transfer) and paid-out expense is logged with timestamps. When their shift ends, the system compares physical cash against system collections. Any difference requires an explanatory note and triggers immediate alert to the owner.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                How does the Dynamic Room QR Catalogue work for guests?
+              </button>
+            </h2>
+            <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#landingFAQ">
+              <div class="accordion-body">
+                We provide print-ready standees with your property's unique QR code. Guests simply point their smartphone camera at the standee to open your digital hotel catalogue. No mobile app download is needed. You can update food menus, room photos, transit details, and Wi-Fi passwords anytime from your dashboard.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                Can I manage multiple hotels or lodge branches with one account?
+              </button>
+            </h2>
+            <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#landingFAQ">
+              <div class="accordion-body">
+                Yes, our multi-branch architecture allows property owners to manage multiple hotels or lodges across different cities from a unified dashboard. You can switch properties in one click and access consolidated revenue analytics.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
+                How fast can my lodge get onboarded with InnVetrix?
+              </button>
+            </h2>
+            <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#landingFAQ">
+              <div class="accordion-body">
+                Our dedicated onboarding team at <strong>Ultoxy Technologies</strong> configures your room categories, room numbers, tax rates, and staff accounts within <strong>2 hours</strong>. We also provide free live staff training over video call or phone.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. High-Converting Closing CTA & Quick Demo Form -->
+<section class="py-5 my-5" id="book-demo">
+  <div class="container">
+    <div class="cta-banner">
+      <div class="row align-items-center g-5">
+        <div class="col-lg-6">
+          <span class="badge-luxury mb-3">Claim Your Free Walkthrough</span>
+          <h2 class="display-5 fw-bold text-white mb-3 font-heading">
+            Ready to Take Your Lodge <br>
+            <span class="gradient-text-gold">Beyond Expectations?</span>
+          </h2>
+          <p class="text-secondary mb-4 fs-6">
+            Book a personalized 15-minute live demo. Our senior hospitality specialist will demonstrate how InnVetrix simplifies your front desk, locks down cashier cash, and boosts repeat bookings.
+          </p>
+          
+          <div class="d-flex flex-column gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="bg-warning bg-opacity-25 text-warning p-2 rounded-circle"><i class="bi bi-shield-check fs-5"></i></div>
+              <span class="text-white">14-Day Risk-Free Trial • No credit card required</span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+              <div class="bg-info bg-opacity-25 text-info p-2 rounded-circle"><i class="bi bi-headset fs-5"></i></div>
+              <span class="text-white">Direct Engineer Support from Ultoxy Technologies</span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+              <div class="bg-success bg-opacity-25 text-success p-2 rounded-circle"><i class="bi bi-telephone-fill fs-5"></i></div>
+              <span class="text-white">Instant Phone Helpline: <a href="tel:{{ phone }}" class="text-warning fw-bold text-decoration-none">{{ phone_display }}</a></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="glass-card p-4 p-md-5">
+            <h3 class="fs-4 fw-bold text-white mb-2">Schedule Free Live Demo</h3>
+            <p class="text-secondary small mb-4">Fill out your lodge details and we will contact you within 15 minutes.</p>
+            
+            <form method="post" action="{% url 'home' %}">
+              {% csrf_token %}
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Your Name *</label>
+                  {{ form.full_name }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Lodge / Hotel Name *</label>
+                  {{ form.property_name }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Phone Number *</label>
+                  {{ form.phone }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Total Rooms *</label>
+                  {{ form.room_count }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Email Address *</label>
+                  {{ form.email }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">City / State</label>
+                  {{ form.city }}
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Primary Interest</label>
+                  {{ form.service_interest }}
+                </div>
+                <div class="col-12">
+                  <button type="submit" class="btn-gold w-100 py-3 mt-2 fs-6 justify-content-center">
+                    <i class="bi bi-send-fill"></i>
+                    <span>Confirm Live Demo Booking</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
