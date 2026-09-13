@@ -5,6 +5,7 @@ from django.utils import timezone
 from .forms import LandingInquiryForm
 from .models import LandingInquiry
 from .security import generate_captcha, check_ip_rate_limit
+from .emails import send_inquiry_emails_async
 
 BRAND_CONTEXT = {
     'brand_name': 'InnVetrix',
@@ -52,6 +53,7 @@ def home_view(request):
             inquiry = form.save(commit=False)
             inquiry.ip_address = client_ip
             inquiry.save()
+            send_inquiry_emails_async(inquiry)
             messages.success(
                 request,
                 f"Thank you, {inquiry.full_name}! Your demo request for '{inquiry.property_name}' has been successfully scheduled. Our team will reach out at {inquiry.phone} within 15 minutes."
@@ -111,6 +113,7 @@ def contact_view(request):
             inquiry = form.save(commit=False)
             inquiry.ip_address = client_ip
             inquiry.save()
+            send_inquiry_emails_async(inquiry)
             messages.success(
                 request,
                 f"Thank you, {inquiry.full_name}! Your message regarding '{inquiry.property_name}' has been received. Our hospitality consultant will contact you via phone ({inquiry.phone}) and email shortly."
