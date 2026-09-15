@@ -2,7 +2,10 @@ from rest_framework import serializers
 from .models import RoomType, Room, RoomDeletionRequest
 
 class RoomTypeSerializer(serializers.ModelSerializer):
-    room_count = serializers.IntegerField(source='rooms.count', read_only=True)
+    room_count = serializers.SerializerMethodField()
+
+    def get_room_count(self, obj):
+        return getattr(obj, 'room_count', None) if hasattr(obj, 'room_count') else obj.rooms.count()
 
     class Meta:
         model = RoomType

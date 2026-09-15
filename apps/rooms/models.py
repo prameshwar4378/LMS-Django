@@ -34,7 +34,8 @@ class Room(TenantModel):
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.AVAILABLE
+        default=Status.AVAILABLE,
+        db_index=True
     )
     description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)

@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.state import token_backend
 from django.contrib.auth import get_user_model
 from .models import RolePermission
 
@@ -79,7 +81,23 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
+        username = attrs.get(self.username_field)
+        if username:
+            user_candidate = User.objects.filter(username=username).first()
+            if user_candidate and not user_candidate.is_active:
+                raise AuthenticationFailed(
+                    "This account has been deactivated. You are unable to access the software. Please contact your administrator.",
+                    code="user_inactive"
+                )
+
         data = super().validate(attrs)
+
+        if not self.user.is_active:
+            raise AuthenticationFailed(
+                "This account has been deactivated. You are unable to access the software. Please contact your administrator.",
+                code="user_inactive"
+            )
+
         data['user'] = {
             'id': self.user.id,
             'username': self.user.username,
@@ -98,6 +116,28 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'subscription': extract_subscription_info(self.user),
             'permissions': RolePermission.get_permissions_for_role(self.user.role, getattr(self.user, 'property', None))
         }
+        return data
+
+class CustomTokenRefreshSerializer(TokenRefreshSerializer):
+    def validate(self, attrs):
+        refresh = attrs.get('refresh')
+        if refresh:
+            try:
+                decoded = token_backend.decode(refresh, verify=True)
+                user_id = decoded.get('user_id')
+                if user_id:
+                    user = User.objects.filter(id=user_id).first()
+                    if user and not user.is_active:
+                        raise AuthenticationFailed(
+                            "This account has been deactivated. You are unable to access the software.",
+                            code="user_inactive"
+                        )
+            except AuthenticationFailed:
+                raise
+            except Exception:
+                pass
+
+        data = super().validate(attrs)
         return data
 
 class UserSerializer(serializers.ModelSerializer):

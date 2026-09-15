@@ -2038,6 +2038,7 @@ class DashboardReportView(APIView):
             c = s.primary_customer
             current_guests.append({
                 'id': s.id,
+                'customer_id': c.id if c else None,
                 'stay_number': s.stay_number,
                 'room_number': s.room.room_number if s.room else '—',
                 'room_type': s.room.room_type.name if (s.room and s.room.room_type) else 'Standard',
@@ -2062,6 +2063,7 @@ class DashboardReportView(APIView):
             c = s.primary_customer
             today_checkins_list.append({
                 'id': s.id,
+                'customer_id': c.id if c else None,
                 'customer_name': c.full_name if c else 'Guest',
                 'mobile': c.mobile if c else '',
                 'room_number': s.room.room_number if s.room else '—',
@@ -2076,6 +2078,7 @@ class DashboardReportView(APIView):
             c = b.customer
             today_checkins_list.append({
                 'id': b.id,
+                'customer_id': c.id if c else None,
                 'customer_name': c.full_name if c else 'Guest',
                 'mobile': c.mobile if c else '',
                 'room_number': b.room.room_number if b.room else '—',
@@ -2095,6 +2098,7 @@ class DashboardReportView(APIView):
             bill = calculate_stay_bill(s)
             today_checkouts_list.append({
                 'id': s.id,
+                'customer_id': c.id if c else None,
                 'customer_name': c.full_name if c else 'Guest',
                 'mobile': c.mobile if c else '',
                 'room_number': s.room.room_number if s.room else '—',

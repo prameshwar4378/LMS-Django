@@ -19,7 +19,7 @@ class Customer(TenantModel):
     first_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True, null=True)
     last_name = models.CharField(max_length=100, blank=True, null=True)
-    mobile = models.CharField(max_length=20)
+    mobile = models.CharField(max_length=20, db_index=True)
     alternate_mobile = models.CharField(max_length=20, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)

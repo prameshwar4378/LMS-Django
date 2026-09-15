@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Count
 import datetime
 from .models import RoomType, Room, RoomDeletionRequest
 from .serializers import RoomTypeSerializer, RoomSerializer, RoomDeletionRequestSerializer
@@ -145,11 +145,11 @@ class RoomTypeViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         user = getattr(self.request, 'user', None)
         if user and not user_has_perm(user, 'rooms', 'can_view'):
             require_perm(user, 'rooms', 'can_view', "You do not have permission to view room categories.")
-        qs = super().get_queryset()
+        qs = super().get_queryset().annotate(room_count=Count('rooms'))
         active_prop = self.get_property_for_request()
         if active_prop and getattr(active_prop, 'parent_property', None):
             root_prop = active_prop.get_root_property()
-            return RoomType.objects.filter(Q(property=active_prop) | Q(property=root_prop)).order_by('name')
+            return RoomType.objects.filter(Q(property=active_prop) | Q(property=root_prop)).annotate(room_count=Count('rooms')).order_by('name')
         return qs
 
     def perform_create(self, serializer):

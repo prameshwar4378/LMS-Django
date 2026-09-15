@@ -23,9 +23,9 @@ class Booking(TenantModel):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='bookings')
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='bookings')
     
-    check_in_date = models.DateField()
+    check_in_date = models.DateField(db_index=True)
     check_in_time = models.TimeField(default=datetime.time(12, 0))
-    expected_checkout_date = models.DateField()
+    expected_checkout_date = models.DateField(db_index=True)
     expected_checkout_time = models.TimeField(default=datetime.time(11, 0))
     
     adults = models.PositiveIntegerField(default=1)
@@ -36,7 +36,7 @@ class Booking(TenantModel):
     discount_value = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     advance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.CONFIRMED)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.CONFIRMED, db_index=True)
     notes = models.TextField(blank=True, null=True)
     
     created_by = models.ForeignKey(

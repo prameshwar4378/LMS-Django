@@ -67,8 +67,29 @@ class Settings(models.Model):
         related_name='settings'
     )
 
+    _cached_settings = {}
+    _cache_timestamp = {}
+
+    @classmethod
+    def clear_settings_cache(cls, prop_id=None):
+        if prop_id is not None:
+            cls._cached_settings.pop(prop_id, None)
+            cls._cache_timestamp.pop(prop_id, None)
+        else:
+            cls._cached_settings.clear()
+            cls._cache_timestamp.clear()
+
     @classmethod
     def get_settings(cls, prop=None):
+        import time
+        now = time.time()
+        prop_key = prop.id if prop else 0
+
+        cached = cls._cached_settings.get(prop_key)
+        ts = cls._cache_timestamp.get(prop_key, 0)
+        if cached is not None and (now - ts) < 60:
+            return cached
+
         if prop:
             obj, _ = cls.objects.get_or_create(
                 property=prop,
@@ -80,11 +101,18 @@ class Settings(models.Model):
                     'gst_number': prop.gstin or ""
                 }
             )
-            return obj
-        obj = cls.objects.first()
-        if not obj:
-            obj = cls.objects.create()
+        else:
+            obj = cls.objects.first()
+            if not obj:
+                obj = cls.objects.create()
+
+        cls._cached_settings[prop_key] = obj
+        cls._cache_timestamp[prop_key] = now
         return obj
+
+    def save(self, *args, **kwargs):
+        self.clear_settings_cache(self.property_id if self.property_id else 0)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.lodge_name} ({self.property.code if self.property else 'Default'})"

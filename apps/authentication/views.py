@@ -2,11 +2,11 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth import get_user_model
 from .models import RolePermission, DEFAULT_PERMISSIONS
 from .serializers import (
-    CustomTokenObtainPairSerializer, UserSerializer, UserCreateUpdateSerializer,
+    CustomTokenObtainPairSerializer, CustomTokenRefreshSerializer, UserSerializer, UserCreateUpdateSerializer,
     RolePermissionSerializer
 )
 from .permissions import IsHotelOwner, IsSuperAdmin
@@ -15,6 +15,9 @@ User = get_user_model()
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+class CustomTokenRefreshView(TokenRefreshView):
+    serializer_class = CustomTokenRefreshSerializer
 
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -112,8 +115,10 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         target_user = self.get_object()
         if target_user.id == request.user.id:
             return Response({'error': 'You cannot deactivate your own account.'}, status=status.HTTP_400_BAD_REQUEST)
+        if target_user.role == 'HOTEL_OWNER' and request.user.role != 'HOTEL_OWNER' and not request.user.is_superuser:
+            return Response({'error': 'Only Hotel Owners or Platform Admins can modify Hotel Owner accounts.'}, status=status.HTTP_403_FORBIDDEN)
         target_user.is_active = not target_user.is_active
-        target_user.save()
+        target_user.save(update_fields=['is_active'])
         return Response({
             'success': True,
             'message': f"User '{target_user.username}' is now {'ACTIVE' if target_user.is_active else 'DEACTIVATED'}.",

@@ -923,6 +923,42 @@ class PlatformPropertyViewSet(viewsets.ViewSet):
             'new_password': new_password
         })
 
+    @action(detail=True, methods=['post'])
+    def toggle_staff_active(self, request, pk=None):
+        """
+        Toggle active / inactive status for any user in this hotel or its branches.
+        """
+        prop = Property.objects.filter(pk=pk).first()
+        if not prop:
+            return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'error': 'user_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            if int(user_id) == request.user.id:
+                return Response({'error': 'You cannot deactivate your own account.'}, status=status.HTTP_400_BAD_REQUEST)
+        except (ValueError, TypeError):
+            pass
+
+        allowed_ids = [prop.id] + list(prop.branches.values_list('id', flat=True))
+        staff = User.objects.filter(id=user_id, property_id__in=allowed_ids).first()
+        if not staff:
+            return Response({'error': 'User not found in this hotel brand.'}, status=status.HTTP_404_NOT_FOUND)
+
+        staff.is_active = not staff.is_active
+        staff.save(update_fields=['is_active'])
+
+        state_label = 'Active' if staff.is_active else 'Inactive'
+        return Response({
+            'success': True,
+            'message': f"User '{staff.username}' status changed to {state_label}.",
+            'is_active': staff.is_active,
+            'user_id': staff.id,
+            'username': staff.username
+        })
+
 
 class PlatformSubscriptionViewSet(viewsets.ViewSet):
     permission_classes = [IsSuperUser]

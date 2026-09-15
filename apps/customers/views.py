@@ -153,8 +153,9 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             elif tab_filter in ['pending_dues', 'pending', 'dues'] and not has_dues:
                 continue
 
-            # Latest transaction summary
-            last_pay = cust.payments.order_by('-payment_date', '-id').first()
+            # Latest transaction summary from prefetched payments (avoids N+1 query)
+            all_cust_payments = list(cust.payments.all())
+            last_pay = max(all_cust_payments, key=lambda p: (getattr(p, 'payment_date', None) or datetime.date.min, p.id)) if all_cust_payments else None
             last_tx = None
             if last_pay:
                 last_tx = {

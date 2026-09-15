@@ -23,7 +23,7 @@ from apps.authentication.permissions import user_has_perm, require_perm, get_per
 
 class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
-    queryset = Stay.objects.all().select_related('room', 'room__room_type', 'primary_customer', 'booking', 'created_by').prefetch_related('guests', 'extra_charges', 'payments').order_by('-created_at')
+    queryset = Stay.objects.all().select_related('property', 'room', 'room__room_type', 'primary_customer', 'booking', 'created_by', 'invoice').prefetch_related('guests', 'extra_charges', 'payments').order_by('-created_at')
     serializer_class = StaySerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -94,7 +94,8 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 
         # 2. Handle Customer Profile (Select existing or create new with deduplication)
-        user_prop = self.get_property_for_request() or getattr(user, 'property', None)
+        room = validated_attrs['room']
+        user_prop = self.get_property_for_request() or getattr(user, 'property', None) or (room.property if room else None)
         customer_id = data.get('customer')
         if customer_id and str(customer_id).lower() not in ['null', 'undefined', 'none', '']:
             try:

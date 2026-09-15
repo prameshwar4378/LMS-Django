@@ -23,9 +23,9 @@ class Stay(TenantModel):
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='stays')
     primary_customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='stays')
     
-    check_in_date = models.DateField()
+    check_in_date = models.DateField(db_index=True)
     check_in_time = models.TimeField(default=datetime.time(12, 0))
-    expected_checkout_date = models.DateField()
+    expected_checkout_date = models.DateField(db_index=True)
     expected_checkout_time = models.TimeField(default=datetime.time(11, 0))
     actual_checkout_date = models.DateField(null=True, blank=True)
     actual_checkout_time = models.TimeField(null=True, blank=True)
@@ -44,7 +44,7 @@ class Stay(TenantModel):
     discount_reason = models.CharField(max_length=255, blank=True, null=True)
 
     notes = models.TextField(blank=True, null=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.CHECKED_IN)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.CHECKED_IN, db_index=True)
     
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
