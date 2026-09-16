@@ -106,6 +106,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'last_name': self.user.last_name,
             'role': self.user.role,
             'is_superuser': self.user.is_superuser,
+            'can_use_mobile_app': getattr(self.user, 'can_use_mobile_app', True),
             'property': self.user.property_id,
             'property_id': self.user.property_id,
             'property_name': self.user.property.name if self.user.property else None,
@@ -114,7 +115,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'operation_mode': self.user.property.get_operation_mode() if (self.user.property and hasattr(self.user.property, 'get_operation_mode')) else 'SHIFT_WISE',
             'is_shift_wise': self.user.property.is_shift_wise if (self.user.property and hasattr(self.user.property, 'is_shift_wise')) else True,
             'subscription': extract_subscription_info(self.user),
-            'permissions': RolePermission.get_permissions_for_role(self.user.role, getattr(self.user, 'property', None))
+            'permissions': self.user.get_effective_permissions() if hasattr(self.user, 'get_effective_permissions') else RolePermission.get_permissions_for_role(self.user.role, getattr(self.user, 'property', None))
         }
         return data
 
@@ -152,10 +153,12 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'role', 'is_superuser', 'is_active', 'property', 'property_name', 'property_code', 'operation_mode', 'is_shift_wise', 'is_branch', 'subscription', 'permissions', 'date_joined')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'role', 'is_superuser', 'is_active', 'can_use_mobile_app', 'custom_permissions', 'property', 'property_name', 'property_code', 'operation_mode', 'is_shift_wise', 'is_branch', 'subscription', 'permissions', 'date_joined')
         read_only_fields = ('id', 'date_joined')
 
     def get_permissions(self, obj):
+        if hasattr(obj, 'get_effective_permissions'):
+            return obj.get_effective_permissions()
         return RolePermission.get_permissions_for_role(obj.role, getattr(obj, 'property', None))
 
     def get_operation_mode(self, obj):
@@ -179,7 +182,7 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'password', 'role', 'is_active', 'property')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'password', 'role', 'is_active', 'can_use_mobile_app', 'custom_permissions', 'property')
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)

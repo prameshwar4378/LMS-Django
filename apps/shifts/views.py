@@ -55,6 +55,27 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             return ShiftDetailSerializer
         return ShiftSerializer
 
+    def get_object(self):
+        pk = self.kwargs.get('pk')
+        try:
+            return super().get_object()
+        except Exception:
+            user = self.request.user
+            if is_manager_or_admin(user):
+                obj = Shift.objects.filter(pk=pk).select_related('user', 'closed_by', 'manager_approved_by', 'reopened_by', 'cash_drawer').first()
+            else:
+                obj = Shift.objects.filter(pk=pk, user=user).select_related('user', 'closed_by', 'manager_approved_by', 'reopened_by', 'cash_drawer').first()
+            if not obj:
+                from rest_framework.exceptions import NotFound
+                raise NotFound("No Shift matches the given query.")
+            # Auto-link property if missing
+            active_prop = self.get_property_for_request()
+            if not obj.property and active_prop:
+                obj.property = active_prop
+                obj.save(update_fields=['property'])
+            self.check_object_permissions(self.request, obj)
+            return obj
+
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
@@ -102,10 +123,10 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         If no active shift, returns suggested opening balance from last closed shift.
         """
         user = request.user
-        prop = getattr(user, 'property', None)
+        prop = self.get_property_for_request() or getattr(user, 'property', None)
         sett = Settings.get_settings(prop=prop)
         is_shift_wise = getattr(prop, 'is_shift_wise', True) if prop else (getattr(sett, 'shift_operation_mode', None) != 'SINGLE_OPERATOR')
-        active_shift = get_active_shift_for_user(user)
+        active_shift = get_active_shift_for_user(user, prop=prop)
         # Pending incoming handovers for this user
         pending_handovers = ShiftHandover.objects.filter(to_user=user, status=ShiftHandover.Status.PENDING)
         handovers_data = ShiftHandoverSerializer(pending_handovers, many=True).data
@@ -146,7 +167,11 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         Opens a new shift for the authenticated receptionist / cashier.
         """
         user = request.user
-        user_prop = getattr(user, 'property', None) if user and not user.is_superuser else None
+        user_prop = self.get_property_for_request() or getattr(user, 'property', None)
+        if not user_prop:
+            from apps.settings_app.models import Property
+            user_prop = Property.objects.filter(is_active=True).first() or Property.objects.first()
+
         if user_prop and hasattr(user_prop, 'is_single_owner') and user_prop.is_single_owner:
             return Response({
                 'success': False,
@@ -155,7 +180,7 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # 1. Check for existing active shift
-        existing_shift = get_active_shift_for_user(user)
+        existing_shift = get_active_shift_for_user(user, prop=user_prop)
         if existing_shift:
             return Response({
                 'success': False,
@@ -165,7 +190,10 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         # 2. Parse Opening Balance
         try:
-            opening_balance = Decimal(str(request.data.get('opening_balance', 0) or 0))
+            raw_bal = request.data.get('opening_balance')
+            if raw_bal is None:
+                raw_bal = request.data.get('opening_cash', 0)
+            opening_balance = Decimal(str(raw_bal or 0))
             if opening_balance < 0:
                 raise ValueError("Opening balance cannot be negative.")
         except Exception as e:
@@ -176,7 +204,6 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # 3. Check Cash Drawer / Register Assignment
-        user_prop = getattr(user, 'property', None) if user and not user.is_superuser else None
         drawer_id = request.data.get('cash_drawer') or request.data.get('cash_drawer_id')
         drawer = None
         if drawer_id:

@@ -1,10 +1,10 @@
 from decimal import Decimal
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.utils import timezone
 from .models import Shift, ShiftDenomination, ShiftExpense, ShiftCashAdjustment, ShiftHandover, ShiftAuditLog
 from apps.billing.models import Payment
 
-def get_active_shift_for_user(user, auto_create_in_single_mode=False):
+def get_active_shift_for_user(user, prop=None, auto_create_in_single_mode=False):
     """
     Returns the currently active open shift for a given user, or None.
     If hotel operates in SINGLE_OWNER mode, shifts are completely bypassed (returns None).
@@ -14,7 +14,7 @@ def get_active_shift_for_user(user, auto_create_in_single_mode=False):
         return None
 
     # Check property operational mode
-    user_prop = getattr(user, 'property', None)
+    user_prop = prop or getattr(user, 'property', None)
     if user_prop and hasattr(user_prop, 'is_single_owner') and user_prop.is_single_owner:
         return None
 
@@ -24,7 +24,12 @@ def get_active_shift_for_user(user, auto_create_in_single_mode=False):
         return None
 
     # Check for user's directly active open shift in standard SHIFT_WISE mode
-    active = Shift.objects.filter(user=user, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]).first()
+    user_shifts = Shift.objects.filter(user=user, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING])
+    if user_prop:
+        prop_shift = user_shifts.filter(Q(property=user_prop) | Q(property__isnull=True)).first()
+        if prop_shift:
+            return prop_shift
+    active = user_shifts.first()
     if active:
         return active
 

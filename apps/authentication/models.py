@@ -45,9 +45,47 @@ class User(AbstractUser):
         related_name='staff_users',
         help_text="Assigned lodge property for multi-tenant isolation"
     )
+    can_use_mobile_app = models.BooleanField(
+        default=True,
+        help_text="Designates whether this user is allowed to access the mobile application."
+    )
+    custom_permissions = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Custom permissions overriding role defaults for this specific user"
+    )
 
     def is_hotel_owner(self):
         return self.is_superuser or self.role in [self.Role.HOTEL_OWNER, self.Role.SUPER_ADMIN, self.Role.SUPERUSER]
+
+    def get_effective_permissions(self):
+        """
+        Computes effective permissions for this user:
+        1. Superusers & Owners get unrestricted full access.
+        2. Role defaults (from RolePermission or DEFAULT_PERMISSIONS).
+        3. User-specific custom_permissions overrides set by the owner.
+        """
+        import copy
+        if self.is_superuser or self.role in ['SUPERUSER', 'HOTEL_OWNER', 'SUPER_ADMIN']:
+            return {
+                'rooms': {'can_view': True, 'can_create': True, 'can_edit_tariffs': True, 'can_change_status': True},
+                'bookings': {'can_view': True, 'can_create': True, 'can_edit': True, 'can_cancel': True, 'can_delete': True},
+                'stays': {'can_checkin': True, 'can_checkout': True, 'can_checkout_with_balance': True, 'can_extend': True},
+                'billing': {'can_collect_payment': True, 'can_give_discount': True, 'max_discount_percent': 100.0, 'can_refund': True, 'can_void': True},
+                'counter_till': {'can_record_expense': True, 'max_expense_limit': 1000000.0, 'can_adjust_float': True, 'can_close_till': True},
+                'reports': {'can_view_revenue': True, 'can_view_police_gazette': True, 'can_export_excel': True},
+                'night_audit': {'can_run_night_audit': True, 'can_rollback_audit': True},
+                'catalogue': {'can_view': True, 'can_edit': True, 'can_upload_photos': True, 'can_manage_inquiries': True, 'can_export_qr': True}
+            }
+
+        perms = copy.deepcopy(RolePermission.get_permissions_for_role(self.role, getattr(self, 'property', None)))
+        if self.custom_permissions and isinstance(self.custom_permissions, dict):
+            for mod, act_dict in self.custom_permissions.items():
+                if mod in perms and isinstance(act_dict, dict) and isinstance(perms[mod], dict):
+                    perms[mod].update(act_dict)
+                else:
+                    perms[mod] = act_dict
+        return perms
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"

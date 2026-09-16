@@ -13,7 +13,10 @@ def user_has_perm(user, module, action):
     if user.is_superuser or user.role in ['SUPERUSER', 'HOTEL_OWNER', 'SUPER_ADMIN']:
         return True
 
-    perms = RolePermission.get_permissions_for_role(user.role, getattr(user, 'property', None))
+    if hasattr(user, 'get_effective_permissions'):
+        perms = user.get_effective_permissions()
+    else:
+        perms = RolePermission.get_permissions_for_role(user.role, getattr(user, 'property', None))
     mod_perms = perms.get(module, {})
     return bool(mod_perms.get(action, False))
 
@@ -28,7 +31,10 @@ def get_perm_limit(user, module, key, fallback=0):
     if user.is_superuser or user.role in ['SUPERUSER', 'HOTEL_OWNER', 'SUPER_ADMIN']:
         return float('inf')
 
-    perms = RolePermission.get_permissions_for_role(user.role, getattr(user, 'property', None))
+    if hasattr(user, 'get_effective_permissions'):
+        perms = user.get_effective_permissions()
+    else:
+        perms = RolePermission.get_permissions_for_role(user.role, getattr(user, 'property', None))
     mod_perms = perms.get(module, {})
     val = mod_perms.get(key)
     try:

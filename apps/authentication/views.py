@@ -125,6 +125,36 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             'is_active': target_user.is_active
         })
 
+    @action(detail=True, methods=['patch'])
+    def toggle_mobile_access(self, request, pk=None):
+        target_user = self.get_object()
+        explicit_val = request.data.get('can_use_mobile_app')
+        if explicit_val is not None:
+            target_user.can_use_mobile_app = bool(explicit_val)
+        else:
+            target_user.can_use_mobile_app = not target_user.can_use_mobile_app
+        target_user.save(update_fields=['can_use_mobile_app'])
+        return Response({
+            'success': True,
+            'message': f"Mobile application access for '{target_user.username}' is now {'ENABLED' if target_user.can_use_mobile_app else 'DISABLED'}.",
+            'can_use_mobile_app': target_user.can_use_mobile_app
+        })
+
+    @action(detail=True, methods=['patch'])
+    def update_permissions(self, request, pk=None):
+        target_user = self.get_object()
+        new_perms = request.data.get('permissions')
+        if new_perms is not None and isinstance(new_perms, dict):
+            target_user.custom_permissions = new_perms
+            target_user.save(update_fields=['custom_permissions'])
+            return Response({
+                'success': True,
+                'message': f"Permissions for '{target_user.username}' updated successfully.",
+                'custom_permissions': target_user.custom_permissions,
+                'effective_permissions': target_user.get_effective_permissions()
+            })
+        return Response({'error': 'Invalid permissions payload. Expected an object.'}, status=status.HTTP_400_BAD_REQUEST)
+
 class RolePermissionViewSet(viewsets.ViewSet):
     permission_classes = [IsHotelOwner]
 
