@@ -2056,37 +2056,74 @@ class DashboardReportView(APIView):
                 'payment_status': 'PAID' if bill['balance'] <= 0 else ('PARTIAL' if bill['total_paid'] > 0 else 'UNPAID'),
             })
 
-        # Today's Checkins
+        # Today's Checkins & Upcoming Arrivals
         today_checkins_list = []
-        today_stays_in = stay_base.filter(check_in_date=today).select_related('primary_customer', 'room')
+        today_stays_in = stay_base.filter(check_in_date=today).select_related('primary_customer', 'room', 'room__room_type').prefetch_related('payments', 'extra_charges')
         for s in today_stays_in:
             c = s.primary_customer
+            bill = calculate_stay_bill(s)
             today_checkins_list.append({
                 'id': s.id,
                 'customer_id': c.id if c else None,
                 'customer_name': c.full_name if c else 'Guest',
+                'guest_name': c.full_name if c else 'Guest',
                 'mobile': c.mobile if c else '',
                 'room_number': s.room.room_number if s.room else '—',
+                'room_type': s.room.room_type.name if (s.room and s.room.room_type) else 'Standard',
+                'check_in_date': str(s.check_in_date),
                 'check_in_time': str(s.check_in_time)[:5] if s.check_in_time else '12:00',
+                'expected_checkout_date': str(s.expected_checkout_date),
+                'expected_checkout_time': str(s.expected_checkout_time)[:5] if s.expected_checkout_time else '11:00',
                 'booking_number': s.stay_number,
+                'stay_number': s.stay_number,
+                'total_amount': float(bill['grand_total']),
+                'total_paid': float(bill['total_paid']),
+                'balance': float(bill['balance']),
                 'status': s.status,
+                'payment_status': 'PAID' if bill['balance'] <= 0 else ('PARTIAL' if bill['total_paid'] > 0 else 'UNPAID'),
+                'is_booking': False,
             })
 
+        upcoming_arrivals_list = []
         book_base = Booking.objects.filter(property=prop) if prop else Booking.objects.all()
-        today_bookings_in = book_base.filter(check_in_date=today, status__in=['CONFIRMED', 'PENDING']).select_related('customer', 'room')
+        today_bookings_in = book_base.filter(check_in_date=today, status__in=['CONFIRMED', 'PENDING']).select_related('customer', 'room', 'room__room_type')
         for b in today_bookings_in:
             c = b.customer
-            today_checkins_list.append({
+            nights = max(1, (b.expected_checkout_date - b.check_in_date).days if (b.expected_checkout_date and b.check_in_date) else 1)
+            rate = float(b.room_rate or (b.room.base_rate if b.room else 0.0))
+            subtotal = rate * nights
+            disc = float(b.discount_value or 0.0)
+            if b.discount_type == 'PERCENTAGE':
+                disc_amount = subtotal * (disc / 100.0)
+            else:
+                disc_amount = disc
+            b_total = round(max(0.0, subtotal - disc_amount), 2)
+            adv = round(float(b.advance_amount or 0.0), 2)
+            b_bal = round(max(0.0, b_total - adv), 2)
+
+            b_item = {
                 'id': b.id,
                 'customer_id': c.id if c else None,
                 'customer_name': c.full_name if c else 'Guest',
+                'guest_name': c.full_name if c else 'Guest',
                 'mobile': c.mobile if c else '',
                 'room_number': b.room.room_number if b.room else '—',
+                'room_type': b.room.room_type.name if (b.room and b.room.room_type) else 'Standard',
+                'check_in_date': str(b.check_in_date),
                 'check_in_time': str(b.check_in_time)[:5] if b.check_in_time else '12:00',
+                'expected_checkout_date': str(b.expected_checkout_date),
+                'expected_checkout_time': str(b.expected_checkout_time)[:5] if b.expected_checkout_time else '11:00',
                 'booking_number': b.booking_number,
-                'advance_amount': float(b.advance_amount or 0),
+                'advance_amount': adv,
+                'total_amount': b_total,
+                'total_paid': adv,
+                'balance': b_bal,
                 'status': b.status,
-            })
+                'payment_status': 'PAID' if b_bal <= 0 else ('PARTIAL' if adv > 0 else 'UNPAID'),
+                'is_booking': True,
+            }
+            upcoming_arrivals_list.append(b_item)
+            today_checkins_list.append(b_item)
 
         # Today's Checkouts
         today_checkouts_list = []
@@ -2147,7 +2184,9 @@ class DashboardReportView(APIView):
                 'today_revenue': float(today_payments),
                 'pending_payments': float(pending_dues),
                 'pending_dues': float(pending_dues),
-                'today_checkins_count': len(today_checkins_list),
+                'today_checkins_count': len(today_stays_in),
+                'upcoming_arrivals_count': len(upcoming_arrivals_list),
+                'expected_checkins_today': len(upcoming_arrivals_list),
                 'today_checkouts_count': len(today_checkouts_list),
                 'occupancy_percentage': round(occupancy_rate, 1),
                 'adr': round(adr, 2),
@@ -2158,6 +2197,7 @@ class DashboardReportView(APIView):
             'tables': {
                 'current_guests': current_guests,
                 'today_checkins': today_checkins_list,
+                'upcoming_arrivals': upcoming_arrivals_list,
                 'today_checkouts': today_checkouts_list,
                 'recent_transactions': recent_transactions,
             }

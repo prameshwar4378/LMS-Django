@@ -438,8 +438,8 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             # Save any unallocated excess amount directly into customer advance credit wallet and log transaction
             if remaining_payment > 0:
                 from decimal import Decimal
-                customer.advance_credit += Decimal(str(remaining_payment))
-                customer.save()
+                customer.advance_credit = (customer.advance_credit or Decimal('0.00')) + Decimal(str(remaining_payment))
+                customer.save(update_fields=['advance_credit'])
 
                 adv_pay = None
                 for _ in range(10):

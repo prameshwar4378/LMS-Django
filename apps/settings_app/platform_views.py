@@ -34,6 +34,76 @@ from apps.authentication.permissions import IsSuperUser
 User = get_user_model()
 SERVER_START_TIME = time.time()
 
+
+def get_property_owner_user(prop, auto_create=False, default_password=None):
+    """
+    Resolves the dedicated owner user account for a given property.
+    STRICTLY restricted to owner roles: HOTEL_OWNER, OWNER, SUPER_ADMIN.
+    MUST NEVER match staff roles (MANAGER or RECEPTIONIST).
+    If auto_create is True and no owner exists, provisions a dedicated owner account for the property.
+    """
+    owner_roles = ['HOTEL_OWNER', 'OWNER', 'SUPER_ADMIN']
+
+    # 1. Direct owner user assigned to this property
+    owner_user = User.objects.filter(property=prop, role__in=owner_roles).first()
+
+    # 2. If branch property, check parent root hotel's owner
+    if not owner_user and prop.parent_property:
+        root_prop = prop.get_root_property()
+        if root_prop and root_prop != prop:
+            owner_user = User.objects.filter(property=root_prop, role__in=owner_roles).first()
+
+    # 3. User with matching owner_email and owner role
+    if not owner_user and prop.owner_email:
+        owner_user = User.objects.filter(email__iexact=prop.owner_email.strip(), role__in=owner_roles).first()
+
+    # 4. User with standard owner username: owner_<cleaned_code>
+    cleaned_code = prop.code.lower().replace('-', '_').replace(' ', '_')
+    if not owner_user:
+        owner_user = User.objects.filter(username__iexact=f"owner_{cleaned_code}").filter(role__in=owner_roles).first()
+
+    # 5. User with root property's owner username
+    if not owner_user and prop.parent_property:
+        root_code = prop.get_root_property().code.lower().replace('-', '_').replace(' ', '_')
+        owner_user = User.objects.filter(username__iexact=f"owner_{root_code}").filter(role__in=owner_roles).first()
+
+    # 6. If not found, check if a non-staff user with owner_email exists
+    if not owner_user and prop.owner_email:
+        candidate = User.objects.filter(email__iexact=prop.owner_email.strip()).exclude(role__in=['MANAGER', 'RECEPTIONIST']).first()
+        if candidate:
+            candidate.role = 'HOTEL_OWNER'
+            if not candidate.property:
+                candidate.property = prop
+            candidate.save(update_fields=['role', 'property'])
+            owner_user = candidate
+
+    # 7. If auto_create is True and still no owner exists, provision the owner account
+    if not owner_user and auto_create:
+        base_username = f"owner_{cleaned_code}"
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}_{counter}"
+            counter += 1
+
+        names = (prop.owner_name or 'Hotel Owner').split()
+        first_name = names[0] if names else 'Hotel'
+        last_name = ' '.join(names[1:]) if len(names) > 1 else 'Owner'
+
+        owner_user = User.objects.create_user(
+            username=username,
+            email=prop.owner_email or f"{username}@lodgemanagement.com",
+            first_name=first_name,
+            last_name=last_name,
+            password=default_password or f"Lodge@{secrets.randbelow(8999)+1000}",
+            role='HOTEL_OWNER'
+        )
+        owner_user.property = prop
+        owner_user.save(update_fields=['property'])
+
+    return owner_user
+
+
 class PlatformPropertyViewSet(viewsets.ViewSet):
     permission_classes = [IsSuperUser]
 
@@ -45,7 +115,8 @@ class PlatformPropertyViewSet(viewsets.ViewSet):
         data = []
         for prop in properties:
             sub = getattr(prop, 'subscription', None)
-            rooms_count = Room.objects.filter(property=prop).count()
+            rooms_count = Room.objects.filter(property=prop, is_active=True).count()
+            occupied_count = Room.objects.filter(property=prop, is_active=True, status='OCCUPIED').count()
             active_stays = Stay.objects.filter(property=prop, status='CHECKED_IN').count()
 
             # Branches under this hotel
@@ -54,13 +125,8 @@ class PlatformPropertyViewSet(viewsets.ViewSet):
             branches_capacity = sum(b.total_rooms for b in branches_qs)
             overall_capacity = prop.total_rooms + branches_capacity
 
-            # Find primary owner
-            owner_user = (
-                User.objects.filter(property=prop, role__in=['HOTEL_OWNER', 'OWNER', 'ADMIN', 'SUPER_ADMIN']).first()
-                or User.objects.filter(property=prop).first()
-                or User.objects.filter(email=prop.owner_email).first()
-                or User.objects.filter(username=f"owner_{prop.code.lower().replace('-', '_')}").first()
-            )
+            # Find primary owner strictly (Never MANAGER or RECEPTIONIST)
+            owner_user = get_property_owner_user(prop)
 
             data.append({
                 'id': prop.id,
@@ -148,6 +214,9 @@ class PlatformPropertyViewSet(viewsets.ViewSet):
         overall_capacity = prop.total_rooms + branches_capacity
         total_configured_rooms = rooms_count + sum(b['rooms_count'] for b in branches_list)
 
+        # Resolve or auto-provision dedicated owner account strictly (Never MANAGER or RECEPTIONIST)
+        owner_user = get_property_owner_user(prop, auto_create=True)
+
         # Owner & Staff users across primary hotel and all branches
         all_prop_ids = [prop.id] + list(prop.branches.values_list('id', flat=True))
         staff_qs = User.objects.filter(property_id__in=all_prop_ids).select_related('property').order_by('property__parent_property_id', 'role', 'username')
@@ -166,13 +235,6 @@ class PlatformPropertyViewSet(viewsets.ViewSet):
                 'property_code': u.property.code if u.property else prop.code,
                 'is_branch': bool(u.property and u.property.parent_property_id),
             })
-
-        owner_user = (
-            User.objects.filter(property=prop, role__in=['HOTEL_OWNER', 'OWNER', 'ADMIN', 'SUPER_ADMIN']).first()
-            or User.objects.filter(property=prop).first()
-            or User.objects.filter(email=prop.owner_email).first()
-            or User.objects.filter(username=f"owner_{prop.code.lower().replace('-', '_')}").first()
-        )
 
         # Billing history entries for this hotel's software subscription
         plan_display = sub.plan.name if sub and sub.plan else 'Starter'
@@ -623,28 +685,25 @@ class PlatformPropertyViewSet(viewsets.ViewSet):
     def reset_owner_password(self, request, pk=None):
         """
         Reset owner password with a secure temporary password.
+        Strictly targets only the hotel owner account.
+        Manager and staff user passwords are protected and never changed here.
         """
         prop = Property.objects.filter(pk=pk).first()
         if not prop:
             return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        owner_user = (
-            User.objects.filter(property=prop, role__in=['HOTEL_OWNER', 'OWNER', 'ADMIN', 'SUPER_ADMIN']).first()
-            or User.objects.filter(property=prop).first()
-            or User.objects.filter(email=prop.owner_email).first()
-            or User.objects.filter(username=f"owner_{prop.code.lower().replace('-', '_')}").first()
-        )
+        new_password = f"LodgePass@{secrets.randbelow(8999)+1000}"
+        owner_user = get_property_owner_user(prop, auto_create=True, default_password=new_password)
 
         if not owner_user:
             return Response({'error': 'No owner account associated with this property.'}, status=status.HTTP_404_NOT_FOUND)
 
-        new_password = f"LodgePass@{secrets.randbelow(8999)+1000}"
         owner_user.set_password(new_password)
         owner_user.save()
 
         return Response({
             'success': True,
-            'message': f'Password reset for {owner_user.username}.',
+            'message': f'Password reset for owner {owner_user.username}.',
             'username': owner_user.username,
             'new_password': new_password
         })

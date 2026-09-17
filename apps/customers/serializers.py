@@ -10,6 +10,7 @@ class CustomerSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     stay_count = serializers.IntegerField(source='stays.count', read_only=True)
     documents = CustomerDocumentSerializer(many=True, read_only=True)
+    advance_credit = serializers.FloatField(read_only=True)
     total_wallet_credit = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -44,12 +45,24 @@ class CustomerHistorySerializer(serializers.ModelSerializer):
     transactions = serializers.SerializerMethodField(read_only=True)
     documents = CustomerDocumentSerializer(many=True, read_only=True)
     advance_credit = serializers.FloatField(read_only=True)
+    total_wallet_credit = serializers.SerializerMethodField(read_only=True)
     overall_pending_balance = serializers.SerializerMethodField(read_only=True)
     overall_account_status = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Customer
         fields = '__all__'
+
+    def get_total_wallet_credit(self, obj):
+        from apps.billing.services import calculate_stay_bill
+        raw_credit = float(obj.advance_credit or 0)
+        stay_overpayment = 0.0
+        for stay in obj.stays.all():
+            bill = calculate_stay_bill(stay)
+            bal = float(bill.get('balance', 0))
+            if bal < 0:
+                stay_overpayment += abs(bal)
+        return raw_credit + stay_overpayment
 
     def get_is_checked_in(self, obj):
         return obj.stays.filter(status='CHECKED_IN').exists()
