@@ -26,6 +26,10 @@ def check_room_availability(room, check_in_dt, check_out_dt, exclude_booking_id=
     if check_cleaning and room.status == 'CLEANING':
         return False, "This room is currently being cleaned and is not available for check-in."
 
+    # 3b. Room Occupied Validation for Immediate Check-In
+    if check_cleaning and room.status == 'OCCUPIED':
+        return False, f"Room {room.room_number} is currently occupied."
+
     # Ensure datetimes are timezone aware
     if timezone.is_naive(check_in_dt):
         check_in_dt = timezone.make_aware(check_in_dt)
@@ -77,3 +81,65 @@ def check_room_availability(room, check_in_dt, check_out_dt, exclude_booking_id=
             return False, f"Room {room.room_number} is currently occupied by an active stay between {s_in_str} and {s_out_str}."
 
     return True, None
+
+
+def sync_rooms_reservation_status(property=None, room=None):
+    """
+    Auto-syncs room status between AVAILABLE and RESERVED based on active reservations for today.
+
+    Business Rules:
+    1. If a room has an active booking (CONFIRMED or PENDING) covering today
+       (check_in_date <= today <= expected_checkout_date):
+       If the room is currently AVAILABLE, it auto-transitions to RESERVED.
+    2. If a room is currently RESERVED, but NO LONGER has an active reservation covering today
+       (e.g., booking was cancelled, completed, checked in, or rescheduled),
+       it auto-reverts to AVAILABLE.
+    3. Rooms in OCCUPIED, CLEANING, or MAINTENANCE status are physically managed and preserved.
+    """
+    from apps.rooms.models import Room
+
+    today = timezone.localdate()
+
+    room_filter = {}
+    booking_filter = {
+        'status__in': ['CONFIRMED', 'PENDING'],
+        'check_in_date__lte': today,
+        'expected_checkout_date__gte': today,
+        'room__isnull': False
+    }
+
+    if property:
+        room_filter['property'] = property
+        booking_filter['property'] = property
+    if room:
+        room_filter['id'] = room.id
+        booking_filter['room'] = room
+
+    # Room IDs that have active confirmed/pending bookings for today
+    booked_room_ids = set(
+        Booking.objects.filter(**booking_filter).values_list('room_id', flat=True)
+    )
+
+    # 1. Transition AVAILABLE -> RESERVED
+    rooms_to_reserve = Room.objects.filter(
+        id__in=booked_room_ids,
+        status=Room.Status.AVAILABLE,
+        **room_filter
+    )
+    for r in rooms_to_reserve:
+        r.status = Room.Status.RESERVED
+        r._change_reason = f"Room {r.room_number} status auto-saved as RESERVED for active booking on {today}."
+        r.save(update_fields=['status', 'updated_at'])
+
+    # 2. Transition RESERVED -> AVAILABLE (if reservation no longer applies for today)
+    rooms_to_free = Room.objects.filter(
+        status=Room.Status.RESERVED,
+        **room_filter
+    ).exclude(
+        id__in=booked_room_ids
+    )
+    for r in rooms_to_free:
+        r.status = Room.Status.AVAILABLE
+        r._change_reason = f"Room {r.room_number} status auto-reverted to AVAILABLE (no active reservation for today)."
+        r.save(update_fields=['status', 'updated_at'])
+

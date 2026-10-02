@@ -2012,6 +2012,12 @@ class DashboardReportView(APIView):
         user = request.user
         prop = get_active_property_for_request(request)
 
+        try:
+            from apps.rooms.services import sync_rooms_reservation_status
+            sync_rooms_reservation_status(property=prop)
+        except Exception:
+            pass
+
         room_base = Room.objects.filter(property=prop, is_active=True) if prop else Room.objects.filter(is_active=True)
         all_rooms = room_base.select_related('room_type').order_by('room_number')
         total_rooms = all_rooms.count()
@@ -2086,6 +2092,11 @@ class DashboardReportView(APIView):
 
         upcoming_arrivals_list = []
         book_base = Booking.objects.filter(property=prop) if prop else Booking.objects.all()
+        advance_deposits = book_base.filter(status__in=['CONFIRMED', 'PENDING']).aggregate(total=Sum('advance_amount'))['total'] or Decimal('0.00')
+        cust_base = Customer.objects.filter(property=prop) if prop else Customer.objects.all()
+        wallet_credit = cust_base.aggregate(total=Sum('advance_credit'))['total'] or Decimal('0.00')
+        total_advance = advance_deposits + wallet_credit
+        today_advance = pay_base.filter(payment_date__date=today, booking__isnull=False).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         today_bookings_in = book_base.filter(check_in_date=today, status__in=['CONFIRMED', 'PENDING']).select_related('customer', 'room', 'room__room_type')
         for b in today_bookings_in:
             c = b.customer
@@ -2173,6 +2184,30 @@ class DashboardReportView(APIView):
             'room_number': (p.stay.room.room_number if (p.stay and p.stay.room) else (p.booking.room.room_number if (p.booking and p.booking.room) else '—'))
         } for p in recent_pmts]
 
+        # Upcoming advance reservations (today or future confirmed/pending)
+        upcoming_reservations_qs = book_base.filter(
+            check_in_date__gte=today,
+            status__in=['CONFIRMED', 'PENDING']
+        ).select_related('customer', 'room', 'room__room_type').order_by('check_in_date', 'check_in_time')
+        upcoming_reservations_list = []
+        for b in upcoming_reservations_qs:
+            c = b.customer
+            upcoming_reservations_list.append({
+                'id': b.id,
+                'customer_id': c.id if c else None,
+                'customer_name': c.full_name if c else 'Guest',
+                'guest_name': c.full_name if c else 'Guest',
+                'mobile': c.mobile if c else '',
+                'room_number': b.room.room_number if b.room else '—',
+                'room_type': b.room.room_type.name if (b.room and b.room.room_type) else 'Standard',
+                'check_in_date': str(b.check_in_date),
+                'check_in_time': str(b.check_in_time)[:5] if b.check_in_time else '12:00',
+                'expected_checkout_date': str(b.expected_checkout_date),
+                'expected_checkout_time': str(b.expected_checkout_time)[:5] if b.expected_checkout_time else '11:00',
+                'booking_number': b.booking_number,
+                'status': b.status,
+            })
+
         return Response({
             'cards': {
                 'total_rooms': total_rooms,
@@ -2182,8 +2217,13 @@ class DashboardReportView(APIView):
                 'cleaning_rooms': cleaning_rooms,
                 'maintenance_rooms': maintenance_rooms,
                 'today_revenue': float(today_payments),
+                'today_collection': float(today_payments),
                 'pending_payments': float(pending_dues),
                 'pending_dues': float(pending_dues),
+                'advance_amount': float(total_advance),
+                'advance_deposits': float(advance_deposits),
+                'wallet_balance': float(wallet_credit),
+                'today_advance': float(today_advance),
                 'today_checkins_count': len(today_stays_in),
                 'upcoming_arrivals_count': len(upcoming_arrivals_list),
                 'expected_checkins_today': len(upcoming_arrivals_list),
@@ -2198,6 +2238,7 @@ class DashboardReportView(APIView):
                 'current_guests': current_guests,
                 'today_checkins': today_checkins_list,
                 'upcoming_arrivals': upcoming_arrivals_list,
+                'upcoming_reservations': upcoming_reservations_list,
                 'today_checkouts': today_checkouts_list,
                 'recent_transactions': recent_transactions,
             }
@@ -2579,6 +2620,295 @@ class ShiftReconciliationReportView(APIView):
             'expense_categories': expense_categories,
             'itemized_expenses': itemized_expenses,
             'total_expense_amount': total_petty_cash
+        })
+
+
+class OperationalRemindersView(APIView):
+    """
+    Real-time intelligent operational reminder and alerts engine for PMS header.
+    Automatically identifies bottlenecks, overdue departures, pending dues, dirty rooms,
+    and shift till actions without cluttering the screen.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        now_local = timezone.localtime(timezone.now()) if timezone.is_aware(timezone.now()) else timezone.now()
+        today = now_local.date()
+        current_time = now_local.time()
+        user = request.user
+        prop = get_active_property_for_request(request)
+
+        # 1. Active Stays & Overdue Departures
+        stay_base = Stay.objects.filter(property=prop) if prop else Stay.objects.all()
+        active_stays = stay_base.filter(status='CHECKED_IN').select_related('primary_customer', 'room', 'room__room_type')
+
+        overdue_stays = []
+        today_expected_checkouts = []
+        pending_dues_total = Decimal('0.00')
+        stays_with_dues_count = 0
+
+        for s in active_stays:
+            bill = calculate_stay_bill(s)
+            bal = Decimal(str(bill.get('balance', 0)))
+            if bal > 0:
+                pending_dues_total += bal
+                stays_with_dues_count += 1
+
+            is_overdue = False
+            if s.expected_checkout_date < today:
+                is_overdue = True
+            elif s.expected_checkout_date == today:
+                checkout_time = s.expected_checkout_time or datetime.time(11, 0)
+                if current_time >= checkout_time:
+                    is_overdue = True
+                else:
+                    today_expected_checkouts.append(s)
+
+            if is_overdue:
+                overdue_stays.append(s)
+
+        # 2. Today's Expected Check-ins (Confirmed / Pending Bookings arriving today)
+        book_base = Booking.objects.filter(property=prop) if prop else Booking.objects.all()
+        today_arrivals = book_base.filter(check_in_date=today, status__in=['CONFIRMED', 'PENDING']).select_related('customer', 'room')
+        today_arrivals_count = today_arrivals.count()
+
+        # 3. Housekeeping & Maintenance Rooms
+        room_base = Room.objects.filter(property=prop, is_active=True) if prop else Room.objects.filter(is_active=True)
+        dirty_rooms_qs = room_base.filter(status=Room.Status.CLEANING).order_by('room_number')
+        dirty_rooms_count = dirty_rooms_qs.count()
+        dirty_room_numbers = list(dirty_rooms_qs.values_list('room_number', flat=True)[:4])
+
+        maintenance_rooms_count = room_base.filter(status=Room.Status.MAINTENANCE).count()
+
+        # 4. Shift Till Reminders
+        from apps.shifts.models import Shift, ShiftHandover
+        is_shift_wise = getattr(prop, 'is_shift_wise', True) if prop else True
+        has_active_shift = False
+        stale_shift = False
+        stale_hours = 0
+        pending_handovers_count = 0
+        pending_approvals_count = 0
+
+        if is_shift_wise:
+            user_shift = Shift.objects.filter(
+                user=user,
+                status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]
+            ).first()
+            if user_shift:
+                has_active_shift = True
+                duration_hrs = (timezone.now() - user_shift.opened_at).total_seconds() / 3600.0
+                if duration_hrs >= 12 or user_shift.is_stale:
+                    stale_shift = True
+                    stale_hours = round(duration_hrs, 1)
+
+            pending_handovers_count = ShiftHandover.objects.filter(
+                to_user=user,
+                status=ShiftHandover.Status.PENDING
+            ).count()
+
+            if user.is_superuser or getattr(user, 'role', '') in ['HOTEL_OWNER', 'SUPER_ADMIN', 'SUPERUSER', 'MANAGER']:
+                shift_base = Shift.objects.filter(property=prop) if prop else Shift.objects.all()
+                pending_approvals_count = shift_base.filter(status=Shift.Status.PENDING_APPROVAL).count()
+
+        # 5. Build Reminders (Only important, actionable items)
+        reminders = []
+
+        # Overdue Checkouts (Immediate Attention)
+        if len(overdue_stays) > 0:
+            sample_rooms = [s.room.room_number for s in overdue_stays[:3] if s.room]
+            room_text = f" • Rooms: {', '.join(sample_rooms)}" if sample_rooms else ""
+            reminders.append({
+                'id': 'overdue_checkouts',
+                'type': 'danger',
+                'priority': 1,
+                'title': f"{len(overdue_stays)} Overdue Departure{'s' if len(overdue_stays) > 1 else ''}",
+                'subtitle': f"Exceeded checkout time{room_text} • Process departure or extend stay",
+                'count': len(overdue_stays),
+                'route': '/current-stays',
+                'badge_label': 'Overdue',
+                'action_label': 'Review Overstay',
+                'category': 'Departures'
+            })
+
+        # Outstanding Guest Dues
+        if pending_dues_total > 0:
+            reminders.append({
+                'id': 'pending_dues',
+                'type': 'danger',
+                'priority': 2,
+                'title': f"₹{int(pending_dues_total):,} Outstanding Due",
+                'subtitle': f"{stays_with_dues_count} active stay{'s' if stays_with_dues_count > 1 else ''} with pending balance • Collect payment",
+                'count': stays_with_dues_count,
+                'amount': float(pending_dues_total),
+                'route': '/payments',
+                'badge_label': 'Unpaid',
+                'action_label': 'Collect Dues',
+                'category': 'Finance'
+            })
+
+        # Stale Shift Till (> 12h)
+        if stale_shift:
+            reminders.append({
+                'id': 'stale_shift',
+                'type': 'warning',
+                'priority': 3,
+                'title': f"Shift Open for {stale_hours}h",
+                'subtitle': "Cashier till running for >12 hours • Reconcile & close till",
+                'count': 1,
+                'route': '/shifts',
+                'badge_label': 'Long Running',
+                'action_label': 'Close Shift',
+                'category': 'Shift Till'
+            })
+
+        # Shift Not Opened Reminder (For active desk staff in shift-wise properties)
+        elif is_shift_wise and not has_active_shift and getattr(user, 'role', '') in ['RECEPTIONIST', 'MANAGER']:
+            reminders.append({
+                'id': 'no_active_shift',
+                'type': 'warning',
+                'priority': 4,
+                'title': "No Active Shift Till",
+                'subtitle': "Front desk shift is currently inactive • Open till to record transactions",
+                'count': 1,
+                'route': '/shifts',
+                'badge_label': 'Action Needed',
+                'action_label': 'Open Shift',
+                'category': 'Shift Till'
+            })
+
+        # Pending Handover Waiting
+        if pending_handovers_count > 0:
+            reminders.append({
+                'id': 'pending_handover',
+                'type': 'info',
+                'priority': 3,
+                'title': f"{pending_handovers_count} Incoming Handover",
+                'subtitle': "Cash transfer awaiting your confirmation • Accept to add to float",
+                'count': pending_handovers_count,
+                'route': '/shifts',
+                'badge_label': 'Pending',
+                'action_label': 'Accept Handover',
+                'category': 'Shift Till'
+            })
+
+        # Manager Shift Discrepancy Approval
+        if pending_approvals_count > 0:
+            reminders.append({
+                'id': 'pending_shift_approvals',
+                'type': 'warning',
+                'priority': 3,
+                'title': f"{pending_approvals_count} Shift Approval{'s' if pending_approvals_count > 1 else ''}",
+                'subtitle': "Cashiers closed shifts with variance awaiting manager authorization",
+                'count': pending_approvals_count,
+                'route': '/shifts',
+                'badge_label': 'Authorization',
+                'action_label': 'Review Shifts',
+                'category': 'Governance'
+            })
+
+        # Dirty Rooms Needing Housekeeping
+        if dirty_rooms_count > 0:
+            rooms_sample = f" • Rooms: {', '.join(dirty_room_numbers)}" if dirty_room_numbers else ""
+            reminders.append({
+                'id': 'dirty_rooms',
+                'type': 'warning',
+                'priority': 5,
+                'title': f"{dirty_rooms_count} Room{'s' if dirty_rooms_count > 1 else ''} Need Cleaning",
+                'subtitle': f"Housekeeping turnover needed{rooms_sample} • Mark vacant ready",
+                'count': dirty_rooms_count,
+                'route': '/rooms',
+                'badge_label': 'Housekeeping',
+                'action_label': 'View Rooms',
+                'category': 'Housekeeping'
+            })
+
+        # Today's Scheduled Departures
+        if len(today_expected_checkouts) > 0:
+            reminders.append({
+                'id': 'today_checkouts',
+                'type': 'primary',
+                'priority': 6,
+                'title': f"{len(today_expected_checkouts)} Scheduled Check-Out{'s' if len(today_expected_checkouts) > 1 else ''}",
+                'subtitle': "Guests due for departure later today • Prepare folios",
+                'count': len(today_expected_checkouts),
+                'route': '/current-stays',
+                'badge_label': 'Due Today',
+                'action_label': 'View Stays',
+                'category': 'Departures'
+            })
+
+        # Today's Scheduled Arrivals
+        if today_arrivals_count > 0:
+            reminders.append({
+                'id': 'today_checkins',
+                'type': 'primary',
+                'priority': 6,
+                'title': f"{today_arrivals_count} Scheduled Check-In{'s' if today_arrivals_count > 1 else ''}",
+                'subtitle': "Advance reservations arriving today • Allocate rooms & check in",
+                'count': today_arrivals_count,
+                'route': '/check-in',
+                'badge_label': 'Arrivals',
+                'action_label': 'Process Arrivals',
+                'category': 'Arrivals'
+            })
+
+        # Rooms Under Maintenance
+        if maintenance_rooms_count > 0:
+            reminders.append({
+                'id': 'maintenance_rooms',
+                'type': 'secondary',
+                'priority': 7,
+                'title': f"{maintenance_rooms_count} Room{'s' if maintenance_rooms_count > 1 else ''} Under Maintenance",
+                'subtitle': "Blocked for engineering repairs or renovation",
+                'count': maintenance_rooms_count,
+                'route': '/rooms',
+                'badge_label': 'Maintenance',
+                'action_label': 'View Maintenance',
+                'category': 'Housekeeping'
+            })
+
+        # Subscription Expiry
+        sub = prop.get_subscription() if (prop and hasattr(prop, 'get_subscription')) else None
+        valid_until = getattr(sub, 'valid_until', None) or (sub.get_valid_until_date() if sub and hasattr(sub, 'get_valid_until_date') else None)
+        if valid_until:
+            if hasattr(valid_until, 'date'):
+                valid_until = valid_until.date()
+            days_left = (valid_until - today).days
+            if days_left <= 15:
+                reminders.insert(0, {
+                    'id': 'subscription_expiry',
+                    'type': 'danger' if days_left <= 5 else 'warning',
+                    'priority': 0,
+                    'title': f"Subscription Expires in {days_left} Day{'s' if days_left != 1 else ''}",
+                    'subtitle': f"Property: {prop.name if prop else 'Hotel'} • Renew to avoid service interruption",
+                    'count': 1,
+                    'is_subscription': True,
+                    'badge_label': 'Expires Soon',
+                    'action_label': 'Renew License',
+                    'category': 'Subscription'
+                })
+
+        return Response({
+            'success': True,
+            'counts': {
+                'active_alerts': len(reminders),
+                'urgent_count': len([r for r in reminders if r['type'] == 'danger']),
+                'overdue_checkouts': len(overdue_stays),
+                'pending_dues': float(pending_dues_total),
+                'pending_dues_count': stays_with_dues_count,
+                'today_checkins': today_arrivals_count,
+                'today_checkouts': len(today_expected_checkouts),
+                'dirty_rooms': dirty_rooms_count,
+                'maintenance_rooms': maintenance_rooms_count,
+                'has_active_shift': has_active_shift,
+            },
+            'reminders': reminders,
+            'summary': {
+                'occupied_rooms': room_base.filter(status=Room.Status.OCCUPIED).count(),
+                'available_rooms': room_base.filter(status=Room.Status.AVAILABLE).count(),
+                'total_rooms': room_base.count(),
+                'property_name': prop.name if prop else 'Primary Lodge'
+            }
         })
 
 

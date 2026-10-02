@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import SettingsViewSet
+from .views import SettingsViewSet, WhatsAppMessageLogViewSet
 from .platform_views import (
     PlatformPropertyViewSet,
     PlatformSubscriptionViewSet,
@@ -12,6 +12,7 @@ from .activity_views import ActivityLogView, ActivityLogCleanupView
 
 router = DefaultRouter()
 router.register(r'settings', SettingsViewSet, basename='settings')
+router.register(r'whatsapp-logs', WhatsAppMessageLogViewSet, basename='whatsapp-logs')
 router.register(r'platform/properties', PlatformPropertyViewSet, basename='platform-properties')
 router.register(r'platform/subscriptions', PlatformSubscriptionViewSet, basename='platform-subscriptions')
 router.register(r'platform/inquiries', PlatformInquiryViewSet, basename='platform-inquiries')

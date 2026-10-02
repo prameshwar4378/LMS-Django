@@ -21,7 +21,7 @@ from apps.settings_app.tenant_views import TenantScopedViewSetMixin
 from apps.authentication.permissions import user_has_perm, require_perm, get_perm_limit
 
 class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
-    queryset = Booking.objects.all().select_related('customer', 'room', 'room__room_type', 'created_by').order_by('-created_at')
+    queryset = Booking.objects.all().select_related('customer', 'room', 'room__room_type', 'created_by').order_by('check_in_date', 'check_in_time', '-created_at')
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -163,6 +163,13 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 transaction_ref=transaction_ref
             )
 
+        # Auto-sync room reservation status for today
+        try:
+            from apps.rooms.services import sync_rooms_reservation_status
+            sync_rooms_reservation_status(property=booking.property, room=booking.room)
+        except Exception:
+            pass
+
         headers = self.get_success_headers(serializer.data)
         return Response({
             'success': True,
@@ -262,6 +269,13 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 transaction_ref=request.data.get('transaction_reference') or ''
             )
 
+        # Auto-sync room reservation status for today
+        try:
+            from apps.rooms.services import sync_rooms_reservation_status
+            sync_rooms_reservation_status(property=booking.property)
+        except Exception:
+            pass
+
         return Response({
             'success': True,
             'message': 'Booking updated successfully.',
@@ -270,7 +284,16 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         require_perm(request.user, 'bookings', 'can_delete', "You do not have permission to permanently delete bookings. You may cancel the booking instead.")
-        return super().destroy(request, *args, **kwargs)
+        instance = self.get_object()
+        prop = instance.property
+        room = instance.room
+        resp = super().destroy(request, *args, **kwargs)
+        try:
+            from apps.rooms.services import sync_rooms_reservation_status
+            sync_rooms_reservation_status(property=prop, room=room)
+        except Exception:
+            pass
+        return resp
 
     @action(detail=True, methods=['post'])
     @transaction.atomic
@@ -315,6 +338,13 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         data = self.get_serializer(booking).data
         data['advance_handling'] = adv_result
 
+        # Auto-sync room reservation status for today
+        try:
+            from apps.rooms.services import sync_rooms_reservation_status
+            sync_rooms_reservation_status(property=booking.property, room=booking.room)
+        except Exception:
+            pass
+
         return Response({
             'success': True,
             'message': msg,
@@ -355,6 +385,13 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         data = self.get_serializer(booking).data
         data['advance_handling'] = adv_result
+
+        # Auto-sync room reservation status for today
+        try:
+            from apps.rooms.services import sync_rooms_reservation_status
+            sync_rooms_reservation_status(property=booking.property, room=booking.room)
+        except Exception:
+            pass
 
         return Response({
             'success': True,

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Settings
+from .models import Settings, WhatsAppMessageLog
 
 class SettingsSerializer(serializers.ModelSerializer):
     gst_number = serializers.CharField(required=False, allow_blank=True, default="")
@@ -15,6 +15,16 @@ class SettingsSerializer(serializers.ModelSerializer):
     shift_alert_phones = serializers.CharField(required=False, allow_blank=True, default="")
     whatsapp_api_url = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")
     whatsapp_api_key = serializers.CharField(required=False, allow_blank=True, default="")
+    whatsapp_default_country_code = serializers.CharField(required=False, allow_blank=True, default="+91")
+    whatsapp_open_mode = serializers.CharField(required=False, allow_blank=True, default="app_autoclose")
+    whatsapp_auto_close_tab = serializers.BooleanField(required=False, default=True)
+    whatsapp_close_delay_seconds = serializers.IntegerField(required=False, default=2)
+    whatsapp_booking_template = serializers.CharField(required=False, allow_blank=True)
+    whatsapp_checkin_template = serializers.CharField(required=False, allow_blank=True)
+    whatsapp_payment_template = serializers.CharField(required=False, allow_blank=True)
+    whatsapp_checkout_template = serializers.CharField(required=False, allow_blank=True)
+    whatsapp_cancellation_template = serializers.CharField(required=False, allow_blank=True)
+    whatsapp_extra_charge_template = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Settings
@@ -34,3 +44,12 @@ class SettingsSerializer(serializers.ModelSerializer):
             data.pop('logo', None)
 
         return super().to_internal_value(data)
+
+
+class WhatsAppMessageLogSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+
+    class Meta:
+        model = WhatsAppMessageLog
+        fields = '__all__'

@@ -7,7 +7,8 @@ from .views import (
     ReportDataView,
     ReportFilterOptionsView,
     NightAuditView,
-    ShiftReconciliationReportView
+    ShiftReconciliationReportView,
+    OperationalRemindersView
 )
 
 urlpatterns = [
@@ -16,6 +17,7 @@ urlpatterns = [
     path('reports/filter-options/', ReportFilterOptionsView.as_view(), name='report_filter_options'),
     path('reports/night-audit/', NightAuditView.as_view(), name='report_night_audit'),
     path('reports/shift-reconciliations/', ShiftReconciliationReportView.as_view(), name='report_shift_reconciliations'),
+    path('reports/operational-reminders/', OperationalRemindersView.as_view(), name='report_operational_reminders'),
 
     # Legacy endpoints retained for backward compatibility
     path('reports/dashboard/', DashboardReportView.as_view(), name='report_dashboard'),

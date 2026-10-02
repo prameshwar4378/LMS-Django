@@ -1,8 +1,8 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Settings, Property
-from .serializers import SettingsSerializer
+from .models import Settings, Property, WhatsAppMessageLog
+from .serializers import SettingsSerializer, WhatsAppMessageLogSerializer
 from apps.authentication.permissions import IsSuperAdmin
 
 class SettingsViewSet(viewsets.ModelViewSet):
@@ -137,4 +137,31 @@ class SettingsViewSet(viewsets.ModelViewSet):
                 'created_at': b.created_at.strftime('%Y-%m-%d') if b.created_at else None
             })
         return Response(data, status=status.HTTP_200_OK)
+
+
+class WhatsAppMessageLogViewSet(viewsets.ModelViewSet):
+    serializer_class = WhatsAppMessageLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = getattr(self.request, 'user', None)
+        if not user or not user.is_authenticated:
+            return WhatsAppMessageLog.objects.none()
+        if user.is_superuser:
+            prop_id = self.request.query_params.get('property')
+            if prop_id:
+                return WhatsAppMessageLog.objects.filter(property_id=prop_id)
+            return WhatsAppMessageLog.objects.all()
+        prop = getattr(user, 'property', None)
+        if not prop:
+            return WhatsAppMessageLog.objects.none()
+        return WhatsAppMessageLog.objects.filter(property=prop)
+
+    def perform_create(self, serializer):
+        user = getattr(self.request, 'user', None)
+        prop = getattr(user, 'property', None)
+        serializer.save(
+            created_by=user if user and user.is_authenticated else None,
+            property=prop
+        )
 

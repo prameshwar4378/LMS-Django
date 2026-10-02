@@ -241,41 +241,50 @@ class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = InvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_permissions(self):
+        if self.action in ['download_invoice', 'print_invoice']:
+            return [permissions.AllowAny()]
+        return super().get_permissions()
+
+    def _resolve_user_and_validate_access(self, request, stay):
+        req_user = getattr(request, 'user', None)
+        user = req_user if (req_user and req_user.is_authenticated) else None
+        if not user:
+            params = getattr(request, 'query_params', None)
+            if params is None:
+                params = getattr(request, 'GET', {})
+            token_str = params.get('token')
+            if token_str:
+                try:
+                    from rest_framework_simplejwt.authentication import JWTAuthentication
+                    jwt_auth = JWTAuthentication()
+                    validated_token = jwt_auth.get_validated_token(token_str)
+                    user = jwt_auth.get_user(validated_token)
+                except Exception:
+                    user = None
+        
+        if not user or not user.is_active:
+            return None, Response({'detail': 'Authentication required to access invoice.'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Verify hotel / branch scoping if applicable
+        if not user.is_superuser:
+            user_prop = getattr(user, 'property', None)
+            if user_prop and stay.property:
+                root_prop = user_prop.get_root_property() if hasattr(user_prop, 'get_root_property') else user_prop
+                stay_root = stay.property.get_root_property() if hasattr(stay.property, 'get_root_property') else stay.property
+                if root_prop and stay_root and root_prop.id != stay_root.id:
+                    return None, Response({'detail': 'Permission denied for this property.'}, status=status.HTTP_403_FORBIDDEN)
+
+        return user, None
+
     @action(detail=False, methods=['get'], url_path=r'by-stay/(?P<stay_id>\d+)')
     def by_stay(self, request, stay_id=None):
         stay = get_object_or_404(Stay, pk=stay_id)
         prop = stay.property or self.get_property_for_request()
-        settings_obj = Settings.get_settings(prop=prop)
-        bill = calculate_stay_bill(stay)
-        
-        # Check or generate invoice record
-        invoice = getattr(stay, 'invoice', None) or Invoice.objects.filter(stay=stay).first()
-        if not invoice:
-            if stay.status != Stay.Status.CHECKED_OUT and not stay.actual_checkout_date:
-                return Response({
-                    'detail': 'Invoice can only be generated after checkout is completed.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            inv_number = generate_unique_invoice_number(prop, settings_obj.invoice_prefix)
-            for attempt in range(10):
-                try:
-                    with transaction.atomic():
-                        invoice, _ = Invoice.objects.get_or_create(
-                            stay=stay,
-                            defaults={
-                                'property': prop,
-                                'invoice_number': inv_number,
-                                'subtotal': bill.get('gross_subtotal', bill.get('subtotal', 0)),
-                                'discount': bill.get('discount_amount', 0),
-                                'tax': bill.get('gst_amount', bill.get('tax_amount', 0)),
-                                'grand_total': bill.get('grand_total', 0),
-                                'paid_amount': bill.get('total_paid', 0),
-                                'balance': bill.get('balance', 0),
-                            }
-                        )
-                    break
-                except IntegrityError:
-                    inv_number = generate_unique_invoice_number(prop, settings_obj.invoice_prefix)
+        from apps.billing.invoice_generator import get_or_create_invoice_for_stay
+        invoice, bill, settings_obj, err = get_or_create_invoice_for_stay(stay, prop=prop)
+        if err:
+            return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
 
         invoice_data = self.get_serializer(invoice).data
         return Response({
@@ -308,3 +317,49 @@ class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
                 'payments': [{'payment_number': p.payment_number, 'method': p.get_payment_method_display(), 'date': p.payment_date.strftime('%d/%m/%Y %I:%M %p') if p.payment_date else '', 'amount': float(p.amount)} for p in stay.payments.all()],
             }
         })
+
+    @action(detail=False, methods=['get'], url_path=r'by-stay/(?P<stay_id>\d+)/download', permission_classes=[permissions.AllowAny])
+    def download_invoice(self, request, stay_id=None):
+        stay = get_object_or_404(Stay, pk=stay_id)
+        user, err_resp = self._resolve_user_and_validate_access(request, stay)
+        if err_resp:
+            return err_resp
+
+        prop = stay.property or (getattr(user, 'property', None) if user else None)
+        from apps.billing.invoice_generator import get_or_create_invoice_for_stay, generate_invoice_pdf_bytes, render_invoice_html
+        invoice, bill, settings_obj, err = get_or_create_invoice_for_stay(stay, prop=prop)
+        if err:
+            return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+
+        fmt = request.query_params.get('format', 'pdf').lower()
+        if fmt == 'html':
+            html_content = render_invoice_html(stay, invoice, bill, settings_obj, is_for_pdf=False)
+            return HttpResponse(html_content, content_type='text/html')
+
+        try:
+            pdf_bytes = generate_invoice_pdf_bytes(stay, invoice, bill, settings_obj)
+            inv_number = invoice.invoice_number if invoice else f"Stay_{stay.stay_number}"
+            filename = f"Invoice_{inv_number}.pdf"
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            disposition = 'attachment' if request.query_params.get('disposition') != 'inline' else 'inline'
+            response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
+            return response
+        except Exception as e:
+            return Response({'detail': f'Error generating invoice PDF: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'], url_path=r'by-stay/(?P<stay_id>\d+)/print', permission_classes=[permissions.AllowAny])
+    def print_invoice(self, request, stay_id=None):
+        stay = get_object_or_404(Stay, pk=stay_id)
+        user, err_resp = self._resolve_user_and_validate_access(request, stay)
+        if err_resp:
+            return err_resp
+
+        prop = stay.property or (getattr(user, 'property', None) if user else None)
+        from apps.billing.invoice_generator import get_or_create_invoice_for_stay, render_invoice_html
+        invoice, bill, settings_obj, err = get_or_create_invoice_for_stay(stay, prop=prop)
+        if err:
+            return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+
+        html_content = render_invoice_html(stay, invoice, bill, settings_obj, is_for_pdf=False, autoprint=True)
+        return HttpResponse(html_content, content_type='text/html')
+

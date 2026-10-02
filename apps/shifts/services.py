@@ -7,24 +7,16 @@ from apps.billing.models import Payment
 def get_active_shift_for_user(user, prop=None, auto_create_in_single_mode=False):
     """
     Returns the currently active open shift for a given user, or None.
-    If hotel operates in SINGLE_OWNER mode, shifts are completely bypassed (returns None).
+    If hotel operates in SINGLE_OWNER mode and no shift is open, shifts are bypassed (returns None).
     If hotel operates in standard SHIFT_WISE mode, returns the user's active open shift.
     """
     if not user or not user.is_authenticated:
         return None
 
-    # Check property operational mode
     user_prop = prop or getattr(user, 'property', None)
-    if user_prop and hasattr(user_prop, 'is_single_owner') and user_prop.is_single_owner:
-        return None
 
-    from apps.settings_app.models import Settings
-    sett = Settings.get_settings(prop=user_prop)
-    if getattr(sett, 'shift_operation_mode', None) == 'SINGLE_OPERATOR':
-        return None
-
-    # Check for user's directly active open shift in standard SHIFT_WISE mode
-    user_shifts = Shift.objects.filter(user=user, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING])
+    # 1. Always check for user's directly active open shift first
+    user_shifts = Shift.objects.filter(user=user, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]).order_by('-opened_at', '-id')
     if user_prop:
         prop_shift = user_shifts.filter(Q(property=user_prop) | Q(property__isnull=True)).first()
         if prop_shift:
@@ -32,6 +24,15 @@ def get_active_shift_for_user(user, prop=None, auto_create_in_single_mode=False)
     active = user_shifts.first()
     if active:
         return active
+
+    # 2. Check property operational mode if no active shift is open
+    if user_prop and hasattr(user_prop, 'is_single_owner') and user_prop.is_single_owner:
+        return None
+
+    from apps.settings_app.models import Settings
+    sett = Settings.get_settings(prop=user_prop)
+    if getattr(sett, 'shift_operation_mode', None) == 'SINGLE_OPERATOR' and not getattr(user_prop, 'is_shift_wise', True):
+        return None
 
     return None
 

@@ -16,6 +16,65 @@ class RoomSerializer(serializers.ModelSerializer):
     base_price = serializers.DecimalField(source='room_type.base_price', max_digits=10, decimal_places=2, read_only=True)
     max_adults = serializers.IntegerField(source='room_type.max_adults', read_only=True)
     max_children = serializers.IntegerField(source='room_type.max_children', read_only=True)
+    today_reservation = serializers.SerializerMethodField()
+    active_guest_name = serializers.SerializerMethodField()
+    active_stay_id = serializers.SerializerMethodField()
+
+    def get_active_guest_name(self, obj):
+        if obj.status == 'OCCUPIED':
+            from apps.stays.models import Stay
+            stay = Stay.objects.filter(room=obj, status='CHECKED_IN').select_related('primary_customer').first()
+            if stay and stay.primary_customer:
+                return stay.primary_customer.full_name
+        return None
+
+    def get_active_stay_id(self, obj):
+        if obj.status == 'OCCUPIED':
+            from apps.stays.models import Stay
+            stay = Stay.objects.filter(room=obj, status='CHECKED_IN').first()
+            if stay:
+                return stay.id
+        return None
+
+    def get_today_reservation(self, obj):
+        if obj.status == 'RESERVED':
+            from apps.bookings.models import Booking
+            from django.utils import timezone
+            today = timezone.localdate()
+            b = Booking.objects.filter(
+                room=obj,
+                status__in=['CONFIRMED', 'PENDING'],
+                check_in_date__lte=today,
+                expected_checkout_date__gte=today
+            ).select_related('customer').first()
+            if not b:
+                # Also check upcoming bookings starting from today or later
+                b = Booking.objects.filter(
+                    room=obj,
+                    status__in=['CONFIRMED', 'PENDING'],
+                    expected_checkout_date__gte=today
+                ).select_related('customer').order_by('check_in_date').first()
+            if not b:
+                # Fallback: ANY confirmed or pending booking for this room
+                b = Booking.objects.filter(
+                    room=obj,
+                    status__in=['CONFIRMED', 'PENDING']
+                ).select_related('customer').order_by('-id').first()
+            if b:
+                nights = max(1, (b.expected_checkout_date - b.check_in_date).days) if (b.expected_checkout_date and b.check_in_date) else 1
+                total_amt = float(getattr(b, 'total_amount', float(b.room_rate or 0) * nights) or (float(b.room_rate or 0) * nights))
+                return {
+                    'booking_id': b.id,
+                    'booking_number': b.booking_number,
+                    'customer_name': b.customer.full_name if b.customer else 'Guest',
+                    'customer_mobile': b.customer.mobile if b.customer else '',
+                    'check_in_date': str(b.check_in_date),
+                    'check_in_time': str(b.check_in_time)[:5] if b.check_in_time else '12:00',
+                    'expected_checkout_date': str(b.expected_checkout_date),
+                    'advance_amount': float(b.advance_amount or 0),
+                    'total_amount': total_amt,
+                }
+        return None
 
     class Meta:
         model = Room

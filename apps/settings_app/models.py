@@ -1,5 +1,77 @@
 from django.db import models
 
+DEFAULT_WHATSAPP_BOOKING_TEMPLATE = (
+    "Hello {{guest_name}},\n\n"
+    "Your booking at {{property_name}} has been confirmed.\n\n"
+    "Booking: {{booking_number}}\n"
+    "Room: {{room_number}}\n"
+    "Check-in: {{check_in_date}} {{check_in_time}}\n"
+    "Check-out: {{check_out_date}}\n"
+    "Guests: {{guest_count}}\n\n"
+    "Advance Paid: ₹{{advance_paid}}\n"
+    "Balance: ₹{{balance_amount}}\n\n"
+    "Thank you!\n"
+    "{{property_name}}"
+)
+
+DEFAULT_WHATSAPP_CHECKIN_TEMPLATE = (
+    "Hello {{guest_name}},\n\n"
+    "Welcome to {{property_name}}! Your check-in is complete.\n\n"
+    "Room: {{room_number}}\n"
+    "Check-out: {{check_out_date}} {{check_out_time}}\n"
+    "Amount Paid: ₹{{amount_paid}}\n"
+    "Balance: ₹{{balance_amount}}\n\n"
+    "We wish you a comfortable stay!\n\n"
+    "{{property_name}}"
+)
+
+DEFAULT_WHATSAPP_PAYMENT_TEMPLATE = (
+    "Hello {{guest_name}},\n\n"
+    "We have received your payment of ₹{{payment_amount}}.\n\n"
+    "Booking: {{booking_number}}\n"
+    "Total Paid: ₹{{total_paid}}\n"
+    "Balance Due: ₹{{balance_amount}}\n\n"
+    "Thank you!\n"
+    "{{property_name}}"
+)
+
+DEFAULT_WHATSAPP_CHECKOUT_TEMPLATE = (
+    "Hello {{guest_name}},\n\n"
+    "Thank you for staying at {{property_name}}!\n\n"
+    "Booking: {{booking_number}}\n"
+    "Room: {{room_number}}\n"
+    "Total Amount: ₹{{grand_total}}\n"
+    "Amount Paid: ₹{{total_paid}}\n"
+    "Balance: ₹{{balance_amount}}\n\n"
+    "We appreciate your visit and look forward to welcoming you again.\n\n"
+    "Thank you!"
+)
+
+DEFAULT_WHATSAPP_CANCELLATION_TEMPLATE = (
+    "Hello {{guest_name}},\n\n"
+    "Your booking at {{property_name}} has been cancelled.\n\n"
+    "Booking: {{booking_number}}\n"
+    "Room: {{room_number}}\n"
+    "Check-in Date: {{check_in_date}}\n"
+    "Check-out Date: {{check_out_date}}\n\n"
+    "If you have any questions or need to re-book, please contact us at {{property_phone}}.\n\n"
+    "Thank you,\n"
+    "{{property_name}}"
+)
+
+DEFAULT_WHATSAPP_EXTRA_CHARGE_TEMPLATE = (
+    "Hello {{guest_name}},\n\n"
+    "An extra charge has been added to your stay at {{property_name}}.\n\n"
+    "Stay: {{booking_number}}\n"
+    "Room: {{room_number}}\n"
+    "Charge: {{charge_description}}\n"
+    "Amount: ₹{{charge_amount}}\n"
+    "Total Extra Charges: ₹{{total_extra_charges}}\n"
+    "Current Balance Due: ₹{{balance_amount}}\n\n"
+    "Thank you!\n"
+    "{{property_name}}"
+)
+
 class Settings(models.Model):
     lodge_name = models.CharField(max_length=200, default="Lodge Management System")
     logo = models.ImageField(upload_to="lodge/", blank=True, null=True)
@@ -53,6 +125,29 @@ class Settings(models.Model):
     shift_alert_phones = models.CharField(max_length=500, blank=True, default="", help_text="Comma-separated mobile numbers with country code for WhatsApp alerts")
     whatsapp_api_url = models.URLField(blank=True, null=True, help_text="Custom WhatsApp Gateway API URL (optional)")
     whatsapp_api_key = models.CharField(max_length=255, blank=True, default="", help_text="WhatsApp Gateway Token / Key (optional)")
+
+    # Configurable WhatsApp Customer Messaging (Manual Send)
+    whatsapp_enabled = models.BooleanField(default=False, help_text="Master toggle to enable customer WhatsApp messaging")
+    whatsapp_default_country_code = models.CharField(max_length=10, default="+91", blank=True, help_text="Default international country code (e.g. +91)")
+    whatsapp_open_mode = models.CharField(max_length=50, default="app_autoclose", blank=True, help_text="Preferred opening mode: 'app_autoclose', 'app_direct', 'web', 'universal'")
+    whatsapp_auto_close_tab = models.BooleanField(default=True, help_text="Automatically close temporary tab after opening WhatsApp Desktop app")
+    whatsapp_close_delay_seconds = models.PositiveSmallIntegerField(default=2, help_text="Auto-close countdown delay in seconds")
+    
+    # Event Toggles
+    whatsapp_booking_enabled = models.BooleanField(default=True, help_text="Enable WhatsApp message on booking creation")
+    whatsapp_checkin_enabled = models.BooleanField(default=True, help_text="Enable WhatsApp message on check-in")
+    whatsapp_payment_enabled = models.BooleanField(default=True, help_text="Enable WhatsApp message on payment received")
+    whatsapp_checkout_enabled = models.BooleanField(default=True, help_text="Enable WhatsApp message on check-out")
+    whatsapp_cancellation_enabled = models.BooleanField(default=True, help_text="Enable WhatsApp message on booking cancellation")
+    whatsapp_extra_charge_enabled = models.BooleanField(default=True, help_text="Enable WhatsApp message when extra charge is added")
+    
+    # Event Templates
+    whatsapp_booking_template = models.TextField(blank=True, default=DEFAULT_WHATSAPP_BOOKING_TEMPLATE, help_text="Custom message template for booking confirmation")
+    whatsapp_checkin_template = models.TextField(blank=True, default=DEFAULT_WHATSAPP_CHECKIN_TEMPLATE, help_text="Custom message template for check-in welcome")
+    whatsapp_payment_template = models.TextField(blank=True, default=DEFAULT_WHATSAPP_PAYMENT_TEMPLATE, help_text="Custom message template for payment receipt")
+    whatsapp_checkout_template = models.TextField(blank=True, default=DEFAULT_WHATSAPP_CHECKOUT_TEMPLATE, help_text="Custom message template for check-out thank you")
+    whatsapp_cancellation_template = models.TextField(blank=True, default=DEFAULT_WHATSAPP_CANCELLATION_TEMPLATE, help_text="Custom message template for booking cancellation")
+    whatsapp_extra_charge_template = models.TextField(blank=True, default=DEFAULT_WHATSAPP_EXTRA_CHARGE_TEMPLATE, help_text="Custom message template for extra charges")
 
     # Petty Cash Limits & Manager Governance
     manager_override_pin = models.CharField(max_length=20, default="1234", blank=True, help_text="Manager PIN for approving high expenses")
@@ -362,4 +457,47 @@ class PropertySubscription(models.Model):
 
     def __str__(self):
         return f"{self.lodge.name} - {self.plan.name if self.plan else 'No Plan'} (Exp: {self.valid_until})"
+
+
+class WhatsAppMessageLog(models.Model):
+    property = models.ForeignKey(
+        'settings_app.Property',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='whatsapp_logs'
+    )
+    booking = models.ForeignKey(
+        'bookings.Booking',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='whatsapp_logs'
+    )
+    customer = models.ForeignKey(
+        'customers.Customer',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='whatsapp_logs'
+    )
+    event_type = models.CharField(max_length=50)  # BOOKING, CHECK_IN, PAYMENT, CHECK_OUT
+    recipient_name = models.CharField(max_length=150, blank=True, default="")
+    mobile = models.CharField(max_length=30)
+    message = models.TextField()
+    status = models.CharField(max_length=50, default="Prepared / Opened")
+    created_by = models.ForeignKey(
+        'authentication.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='whatsapp_logs'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.event_type} - {self.mobile} ({self.status})"
 

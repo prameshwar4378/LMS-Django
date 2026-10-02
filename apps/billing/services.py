@@ -36,7 +36,13 @@ def calculate_stay_bill(stay, override_checkout_dt=None):
 
     chargeable = getattr(stay, 'chargeable_nights', None)
     if chargeable and int(chargeable) > 0:
-        room_days = int(chargeable)
+        val_cn = int(chargeable)
+        min_allowed = max(1, calendar_days - 1)
+        max_allowed = calendar_days + 1
+        if min_allowed <= val_cn <= max_allowed:
+            room_days = val_cn
+        else:
+            room_days = calendar_days
     else:
         room_days = calendar_days
 

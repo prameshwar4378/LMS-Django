@@ -26,13 +26,13 @@ from apps.billing.services import generate_unique_shift_number
 
 def ensure_default_drawers(prop=None):
     if prop:
-        if CashDrawer.objects.filter(property=prop).count() == 0:
+        if CashDrawer.objects.filter(property=prop).count() == 0 and CashDrawer.history.filter(property=prop).count() == 0:
             CashDrawer.objects.create(property=prop, name="Main Front Desk", code="POS-MAIN-01", location="Lobby Front Desk", default_float=Decimal('1000.00'))
             CashDrawer.objects.create(property=prop, name="Night Desk Counter", code="POS-NIGHT-01", location="Front Counter", default_float=Decimal('1000.00'))
             CashDrawer.objects.create(property=prop, name="Restaurant / Café POS", code="POS-CAFE-01", location="Ground Floor Restaurant", default_float=Decimal('500.00'))
             CashDrawer.objects.create(property=prop, name="Room Service Station", code="POS-RS-01", location="Kitchen Service Counter", default_float=Decimal('500.00'))
     else:
-        if CashDrawer.objects.count() == 0:
+        if CashDrawer.objects.count() == 0 and CashDrawer.history.count() == 0:
             CashDrawer.objects.create(name="Main Front Desk", code="POS-MAIN-01", location="Lobby Front Desk", default_float=Decimal('1000.00'))
             CashDrawer.objects.create(name="Night Desk Counter", code="POS-NIGHT-01", location="Front Counter", default_float=Decimal('1000.00'))
             CashDrawer.objects.create(name="Restaurant / Café POS", code="POS-CAFE-01", location="Ground Floor Restaurant", default_float=Decimal('500.00'))
@@ -181,6 +181,11 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         # 1. Check for existing active shift
         existing_shift = get_active_shift_for_user(user, prop=user_prop)
+        if not existing_shift:
+            existing_shift = Shift.objects.filter(
+                user=user,
+                status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]
+            ).first()
         if existing_shift:
             return Response({
                 'success': False,
@@ -223,6 +228,15 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                         'message': f"Register '{drawer.name}' ({drawer.code}) is currently in use by {occupied_by} (Shift #{occupied.shift_number}). Please select an available drawer.",
                         'errors': {'cash_drawer': ['Register is currently in use by another cashier.']}
                     }, status=status.HTTP_400_BAD_REQUEST)
+        elif user_prop:
+            ensure_default_drawers(prop=user_prop)
+            avail = CashDrawer.objects.filter(property=user_prop, is_active=True)
+            for d in avail:
+                if d.allow_shared_users or not Shift.objects.filter(cash_drawer=d, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]).exclude(user=user).exists():
+                    drawer = d
+                    break
+            if not drawer:
+                drawer = avail.first()
 
         # 4. Generate Unique Shift Number (SHIFT-YYYYMMDD-XXX)
         prefix = "SHIFT-"
@@ -1077,12 +1091,42 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             'handover': ShiftHandoverSerializer(handover).data
         })
 
-    @action(detail=True, methods=['put', 'patch'], url_path=r'expenses/(?P<expense_id>\d+)')
+    @action(detail=True, methods=['put', 'patch', 'delete'], url_path=r'expenses/(?P<expense_id>\d+)')
     @transaction.atomic
     def update_expense(self, request, pk=None, expense_id=None):
         shift = self.get_object()
         user = request.user
         expense = get_object_or_404(ShiftExpense, id=expense_id, shift=shift)
+
+        if shift.status in ['CLOSED', 'AUDITED'] and not (user.is_superuser or getattr(user, 'role', '') in ['SUPER_ADMIN', 'HOTEL_OWNER']):
+            return Response({
+                'success': False,
+                'message': 'Cannot modify expenses of a closed shift. Admin permission required.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        if request.method == 'DELETE':
+            old_amount = float(expense.amount)
+            old_desc = expense.description
+            expense.delete()
+
+            fin = calculate_shift_financials(shift)
+            shift.expected_cash = Decimal(str(fin['expected_cash']))
+            shift.updated_by = user
+            shift.save()
+
+            log_shift_action(
+                shift,
+                user,
+                'EXPENSE_DELETED',
+                f'Expense #{expense_id} (₹{old_amount:.2f} for {old_desc}) deleted by {user.get_full_name() or user.username}',
+                {'expense_id': int(expense_id), 'amount': old_amount}
+            )
+
+            return Response({
+                'success': True,
+                'message': 'Expense deleted successfully.',
+                'financials': fin
+            })
 
         amount = request.data.get('amount')
         description = request.data.get('description')
@@ -1219,3 +1263,111 @@ class ShiftViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             'active_shifts': ShiftSerializer(active_shifts, many=True).data,
             'station_balances': station_balances
         })
+
+
+class CashDrawerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    """
+    CRUD ViewSet for managing Front Desk Counters & Cash Drawers.
+    Hotel Owners and Managers can configure desks, update them, and delete unused desks.
+    Fully supports multi-branch isolation and branch-wise desk administration.
+    """
+    queryset = CashDrawer.objects.all().order_by('name')
+    serializer_class = CashDrawerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user_prop = self.get_property_for_request()
+        if user_prop:
+            ensure_default_drawers(prop=user_prop)
+        qs = super().get_queryset()
+        if self.request.query_params.get('active_only') == 'true':
+            qs = qs.filter(is_active=True)
+        return qs.order_by('name')
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if not is_manager_or_admin(user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only Hotel Owners and Managers can configure counter desks.")
+
+        user_prop = self.get_property_for_request()
+        req_prop_id = self.request.data.get('property') or self.request.query_params.get('property')
+        if req_prop_id and is_manager_or_admin(user):
+            from apps.settings_app.models import Property
+            target_prop = Property.objects.filter(id=req_prop_id).first()
+            if target_prop:
+                if user.is_superuser:
+                    user_prop = target_prop
+                elif user_prop:
+                    root_prop = user_prop.get_root_property() if hasattr(user_prop, 'get_root_property') else user_prop
+                    target_root = target_prop.get_root_property() if hasattr(target_prop, 'get_root_property') else target_prop
+                    if target_root and target_root.id == root_prop.id:
+                        user_prop = target_prop
+
+        if user_prop:
+            ensure_default_drawers(prop=user_prop)
+
+        code = serializer.validated_data.get('code')
+        if not code or not str(code).strip():
+            count = CashDrawer.objects.filter(property=user_prop).count() + 1 if user_prop else CashDrawer.objects.count() + 1
+            code = f"POS-DESK-{count:02d}"
+            while (CashDrawer.objects.filter(property=user_prop, code=code).exists() if user_prop else CashDrawer.objects.filter(code=code).exists()):
+                count += 1
+                code = f"POS-DESK-{count:02d}"
+
+        save_kwargs = {'code': code}
+        if user_prop:
+            save_kwargs['property'] = user_prop
+        instance = serializer.save(**save_kwargs)
+        if user and user.is_authenticated and instance:
+            try:
+                instance._history_user = user
+            except Exception:
+                pass
+
+    def perform_update(self, serializer):
+        user = self.request.user
+        if not is_manager_or_admin(user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only Hotel Owners and Managers can modify counter desks.")
+
+        save_kwargs = {}
+        req_prop_id = self.request.data.get('property')
+        if req_prop_id and is_manager_or_admin(user):
+            from apps.settings_app.models import Property
+            user_prop = self.get_property_for_request()
+            target_prop = Property.objects.filter(id=req_prop_id).first()
+            if target_prop:
+                if user.is_superuser:
+                    save_kwargs['property'] = target_prop
+                elif user_prop:
+                    root_prop = user_prop.get_root_property() if hasattr(user_prop, 'get_root_property') else user_prop
+                    target_root = target_prop.get_root_property() if hasattr(target_prop, 'get_root_property') else target_prop
+                    if target_root and target_root.id == root_prop.id:
+                        save_kwargs['property'] = target_prop
+
+        instance = serializer.save(**save_kwargs)
+        if user and user.is_authenticated and instance:
+            try:
+                instance._history_user = user
+            except Exception:
+                pass
+
+    def destroy(self, request, *args, **kwargs):
+        if not is_manager_or_admin(request.user):
+            return Response(
+                {'error': 'Only Hotel Owners and Managers can delete counter desks.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        instance = self.get_object()
+        active_shifts = instance.shifts.filter(status__in=[Shift.Status.OPEN, Shift.Status.CLOSING])
+        if active_shifts.exists():
+            active_shift = active_shifts.first()
+            cashier = active_shift.user.get_full_name() or active_shift.user.username if active_shift.user else 'Staff'
+            return Response({
+                'error': f"Cannot delete counter desk '{instance.name}' because Shift #{active_shift.shift_number} is currently active on it (assigned to {cashier}). Please close the shift before removing this counter."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        desk_name = instance.name
+        self.perform_destroy(instance)
+        return Response({'success': True, 'message': f"Counter desk '{desk_name}' deleted successfully."}, status=status.HTTP_200_OK)

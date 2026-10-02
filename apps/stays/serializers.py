@@ -18,6 +18,7 @@ class StaySerializer(serializers.ModelSerializer):
     extra_charges = ExtraChargeSerializer(many=True, read_only=True)
     payments = PaymentSerializer(many=True, read_only=True)
     bill_summary = serializers.SerializerMethodField(read_only=True)
+    bill = serializers.SerializerMethodField(read_only=True)
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
     has_invoice = serializers.SerializerMethodField(read_only=True)
     invoice_number = serializers.CharField(source='invoice.invoice_number', read_only=True, default=None)
@@ -45,16 +46,24 @@ class StaySerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'expected_checkout_date': 'Check-out datetime must be strictly after check-in datetime.'})
 
         chargeable_n = attrs.get('chargeable_nights')
-        if chargeable_n is not None and check_in_d and checkout_d:
+        if check_in_d and checkout_d:
             cal_nights = max(1, (checkout_d - check_in_d).days)
             min_allowed = max(1, cal_nights - 1)
             max_allowed = cal_nights + 1
-            if not (min_allowed <= int(chargeable_n) <= max_allowed):
-                raise serializers.ValidationError({
-                    'chargeable_nights': f"Considered nights ({chargeable_n}) must be between {min_allowed} and {max_allowed} for stay from {check_in_d} to {checkout_d}."
-                })
+            if chargeable_n is not None:
+                if not (min_allowed <= int(chargeable_n) <= max_allowed):
+                    raise serializers.ValidationError({
+                        'chargeable_nights': f"Considered nights ({chargeable_n}) must be between {min_allowed} and {max_allowed} for stay from {check_in_d} to {checkout_d}."
+                    })
+            elif self.instance and (attrs.get('check_in_date') or attrs.get('expected_checkout_date')):
+                old_cn = self.instance.chargeable_nights
+                if old_cn is not None and not (min_allowed <= int(old_cn) <= max_allowed):
+                    attrs['chargeable_nights'] = cal_nights
 
         return attrs
+
+    def get_bill(self, obj):
+        return calculate_stay_bill(obj)
 
     def get_bill_summary(self, obj):
         return calculate_stay_bill(obj)

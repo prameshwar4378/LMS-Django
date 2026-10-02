@@ -47,7 +47,12 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(status=status_param)
         else:
             if self.request.query_params.get('current') == 'true':
-                queryset = queryset.filter(status='CHECKED_IN')
+                today = timezone.localdate()
+                queryset = queryset.filter(
+                    Q(status='CHECKED_IN') |
+                    Q(status__in=['CHECKED_OUT', 'COMPLETED'], actual_checkout_date=today) |
+                    Q(status__in=['CHECKED_OUT', 'COMPLETED'], updated_at__date=today)
+                )
 
         if search_param:
             queryset = queryset.filter(
@@ -551,6 +556,14 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         room.status = room_next_status
         room._change_reason = f"Room {room.room_number} status set to {room_next_status} after Stay #{stay.stay_number} checkout."
         room.save()
+
+        # If set to AVAILABLE, check if there is an incoming reservation for today to auto-transition to RESERVED
+        if room_next_status == Room.Status.AVAILABLE:
+            try:
+                from apps.rooms.services import sync_rooms_reservation_status
+                sync_rooms_reservation_status(property=stay.property, room=room)
+            except Exception:
+                pass
 
         # 6. Mark linked booking as COMPLETED
         if stay.booking:

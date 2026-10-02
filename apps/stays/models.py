@@ -84,6 +84,16 @@ class Stay(TenantModel):
                 self.property = self.primary_customer.property
             elif self.created_by and getattr(self.created_by, 'property_id', None):
                 self.property = self.created_by.property
+
+        # Keep chargeable_nights in sync with calendar dates if out of valid bounds
+        if self.check_in_date and self.expected_checkout_date:
+            cal_nights = max(1, (self.expected_checkout_date - self.check_in_date).days)
+            if self.chargeable_nights is not None:
+                min_allowed = max(1, cal_nights - 1)
+                max_allowed = cal_nights + 1
+                if not (min_allowed <= int(self.chargeable_nights) <= max_allowed):
+                    self.chargeable_nights = cal_nights
+
         super().save(*args, **kwargs)
 
     def __str__(self):

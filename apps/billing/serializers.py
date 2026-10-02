@@ -4,6 +4,8 @@ from apps.settings_app.models import Settings
 import datetime
 
 class ChargeTypeSerializer(serializers.ModelSerializer):
+    default_price = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False, required=False)
+
     class Meta:
         model = ChargeType
         fields = '__all__'
@@ -43,6 +45,8 @@ class ExtraChargeSerializer(serializers.ModelSerializer):
     charge_type_name = serializers.SerializerMethodField(read_only=True)
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
     charge_date = serializers.DateTimeField(required=False)
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False, read_only=True)
 
     class Meta:
         model = ExtraCharge
@@ -60,6 +64,7 @@ class ExtraChargeSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class PaymentSerializer(serializers.ModelSerializer):
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
     received_by_name = serializers.SerializerMethodField(read_only=True)
     created_by_name = serializers.SerializerMethodField(read_only=True)
     updated_by_name = serializers.SerializerMethodField(read_only=True)

@@ -3,10 +3,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from django.db.models import Q, Sum, Count
+from django.utils import timezone
 import datetime
 from .models import RoomType, Room, RoomDeletionRequest
 from .serializers import RoomTypeSerializer, RoomSerializer, RoomDeletionRequestSerializer
-from .services import check_room_availability
+from .services import check_room_availability, sync_rooms_reservation_status
 
 def parse_datetime(val_str, default_time_str='12:00'):
     """
@@ -173,6 +174,14 @@ class RoomViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         user = getattr(self.request, 'user', None)
         if user and not user_has_perm(user, 'rooms', 'can_view'):
             require_perm(user, 'rooms', 'can_view', "You do not have permission to view the room inventory.")
+
+        # Auto-sync room reservation status with today's active bookings
+        try:
+            active_prop = self.get_property_for_request()
+            sync_rooms_reservation_status(property=active_prop)
+        except Exception:
+            pass
+
         return super().get_queryset()
 
     def perform_create(self, serializer):
@@ -309,6 +318,18 @@ class RoomViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         except (ValueError, TypeError):
             ex_s_id = None
 
+        # Check cleaning parameter (Rule #12):
+        check_cleaning_param = request.query_params.get('check_cleaning')
+        if check_cleaning_param is not None:
+            check_cleaning = check_cleaning_param.lower() in ('true', '1', 'yes')
+        else:
+            # Auto-enable check_cleaning if check-in is immediate (within 2 hours of current time or in the past)
+            now = timezone.now()
+            chk_dt = target_checkin
+            if timezone.is_naive(chk_dt):
+                chk_dt = timezone.make_aware(chk_dt)
+            check_cleaning = chk_dt <= (now + datetime.timedelta(hours=2))
+
         available_rooms = []
         for r in all_rooms:
             is_avail, _ = check_room_availability(
@@ -316,7 +337,8 @@ class RoomViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 target_checkin,
                 target_checkout,
                 exclude_booking_id=ex_b_id,
-                exclude_stay_id=ex_s_id
+                exclude_stay_id=ex_s_id,
+                check_cleaning=check_cleaning
             )
             if is_avail:
                 available_rooms.append(r)
@@ -343,9 +365,18 @@ class RoomViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         room.status = new_status
         room._change_reason = f"Room {room.room_number} status updated from {old_status} to {new_status}."
         room.save()
+
+        # If room was set to AVAILABLE, check if it should auto-transition to RESERVED for today
+        if new_status == Room.Status.AVAILABLE:
+            try:
+                sync_rooms_reservation_status(property=room.property, room=room)
+                room.refresh_from_db()
+            except Exception:
+                pass
+
         return Response({
             'success': True,
-            'message': f'Room status updated to {new_status}.',
+            'message': f'Room status updated to {room.status}.',
             'data': self.get_serializer(room).data
         })
 

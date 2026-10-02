@@ -12,6 +12,17 @@ class CustomerSerializer(serializers.ModelSerializer):
     documents = CustomerDocumentSerializer(many=True, read_only=True)
     advance_credit = serializers.FloatField(read_only=True)
     total_wallet_credit = serializers.SerializerMethodField(read_only=True)
+    is_checked_in = serializers.SerializerMethodField(read_only=True)
+    active_stay = serializers.SerializerMethodField(read_only=True)
+    active_stay_room = serializers.SerializerMethodField(read_only=True)
+    active_stay_rooms = serializers.SerializerMethodField(read_only=True)
+    active_stays_count = serializers.SerializerMethodField(read_only=True)
+    active_stays = serializers.SerializerMethodField(read_only=True)
+    pending_dues = serializers.SerializerMethodField(read_only=True)
+    has_checked_out = serializers.SerializerMethodField(read_only=True)
+    checked_out_stay_count = serializers.SerializerMethodField(read_only=True)
+    last_checked_out_stay = serializers.SerializerMethodField(read_only=True)
+    last_checked_out_room = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Customer
@@ -36,10 +47,111 @@ class CustomerSerializer(serializers.ModelSerializer):
                 stay_overpayment += abs(bal)
         return raw_credit + stay_overpayment
 
+    def get_is_checked_in(self, obj):
+        return any(s.status == 'CHECKED_IN' for s in obj.stays.all())
+
+    def get_has_checked_out(self, obj):
+        return any(s.status in ['CHECKED_OUT', 'COMPLETED'] for s in obj.stays.all())
+
+    def get_checked_out_stay_count(self, obj):
+        return sum(1 for s in obj.stays.all() if s.status in ['CHECKED_OUT', 'COMPLETED'])
+
+    def get_last_checked_out_stay(self, obj):
+        checked_out_stays = [s for s in obj.stays.all() if s.status in ['CHECKED_OUT', 'COMPLETED']]
+        if not checked_out_stays:
+            return None
+        latest = max(checked_out_stays, key=lambda s: s.actual_checkout_date or s.expected_checkout_date or s.id)
+        return {
+            'id': latest.id,
+            'stay_number': latest.stay_number,
+            'room_id': latest.room.id if latest.room else None,
+            'room_number': latest.room.room_number if latest.room else 'N/A',
+            'room_type': latest.room.room_type.name if latest.room and latest.room.room_type else 'Standard',
+            'check_in_date': str(latest.check_in_date),
+            'actual_checkout_date': str(latest.actual_checkout_date or latest.expected_checkout_date or ''),
+            'checkout_date': str(latest.actual_checkout_date or latest.expected_checkout_date or ''),
+        }
+
+    def get_last_checked_out_room(self, obj):
+        stay_info = self.get_last_checked_out_stay(obj)
+        return stay_info.get('room_number') if stay_info else None
+
+    def get_active_stays(self, obj):
+        import datetime
+        from django.utils import timezone
+        today = timezone.localdate() if hasattr(timezone, 'localdate') else datetime.date.today()
+        result = []
+        for s in obj.stays.all():
+            if s.status == 'CHECKED_IN':
+                is_overdue = bool(s.expected_checkout_date and s.expected_checkout_date < today)
+                result.append({
+                    'id': s.id,
+                    'stay_number': s.stay_number,
+                    'room_id': s.room.id if s.room else None,
+                    'room_number': s.room.room_number if s.room else 'N/A',
+                    'room_type': s.room.room_type.name if (s.room and s.room.room_type) else 'Standard',
+                    'check_in_date': str(s.check_in_date),
+                    'expected_checkout_date': str(s.expected_checkout_date),
+                    'is_overdue': is_overdue,
+                })
+        return result
+
+    def get_active_stay_rooms(self, obj):
+        rooms = []
+        seen = set()
+        for s in obj.stays.all():
+            if s.status == 'CHECKED_IN' and s.room and s.room.room_number:
+                rn = str(s.room.room_number).strip()
+                if rn and rn not in seen:
+                    seen.add(rn)
+                    rooms.append(rn)
+        return rooms
+
+    def get_active_stays_count(self, obj):
+        return sum(1 for s in obj.stays.all() if s.status == 'CHECKED_IN')
+
+    def get_active_stay(self, obj):
+        active = next((s for s in obj.stays.all() if s.status == 'CHECKED_IN'), None)
+        if not active:
+            return None
+        import datetime
+        from django.utils import timezone
+        today = timezone.localdate() if hasattr(timezone, 'localdate') else datetime.date.today()
+        is_overdue = bool(active.expected_checkout_date and active.expected_checkout_date < today)
+        return {
+            'id': active.id,
+            'stay_number': active.stay_number,
+            'room_id': active.room.id if active.room else None,
+            'room_number': active.room.room_number if active.room else 'N/A',
+            'room_type': active.room.room_type.name if active.room and active.room.room_type else 'Standard',
+            'check_in_date': str(active.check_in_date),
+            'expected_checkout_date': str(active.expected_checkout_date),
+            'is_overdue': is_overdue,
+        }
+
+    def get_active_stay_room(self, obj):
+        rooms = self.get_active_stay_rooms(obj)
+        return ", ".join(rooms) if rooms else None
+
+    def get_pending_dues(self, obj):
+        from apps.billing.services import calculate_stay_bill
+        total_dues = 0.0
+        for s in obj.stays.all():
+            if s.status == 'CHECKED_IN':
+                bill = calculate_stay_bill(s)
+                bal = float(bill.get('balance', 0))
+                if bal > 0:
+                    total_dues += bal
+        return total_dues
+
 class CustomerHistorySerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     is_checked_in = serializers.SerializerMethodField(read_only=True)
     active_stay = serializers.SerializerMethodField(read_only=True)
+    active_stay_room = serializers.SerializerMethodField(read_only=True)
+    active_stay_rooms = serializers.SerializerMethodField(read_only=True)
+    active_stays_count = serializers.SerializerMethodField(read_only=True)
+    active_stays = serializers.SerializerMethodField(read_only=True)
     stays = serializers.SerializerMethodField(read_only=True)
     bookings = serializers.SerializerMethodField(read_only=True)
     transactions = serializers.SerializerMethodField(read_only=True)
@@ -67,10 +179,51 @@ class CustomerHistorySerializer(serializers.ModelSerializer):
     def get_is_checked_in(self, obj):
         return obj.stays.filter(status='CHECKED_IN').exists()
 
+    def get_active_stays(self, obj):
+        import datetime
+        from django.utils import timezone
+        today = timezone.localdate() if hasattr(timezone, 'localdate') else datetime.date.today()
+        result = []
+        for s in obj.stays.filter(status='CHECKED_IN').select_related('room', 'room__room_type').order_by('-created_at'):
+            is_overdue = bool(s.expected_checkout_date and s.expected_checkout_date < today)
+            result.append({
+                'id': s.id,
+                'stay_number': s.stay_number,
+                'room_id': s.room.id if s.room else None,
+                'room_number': s.room.room_number if s.room else 'N/A',
+                'room_type': s.room.room_type.name if (s.room and s.room.room_type) else 'Standard',
+                'check_in_date': str(s.check_in_date),
+                'expected_checkout_date': str(s.expected_checkout_date),
+                'is_overdue': is_overdue,
+            })
+        return result
+
+    def get_active_stay_rooms(self, obj):
+        rooms = []
+        seen = set()
+        for s in obj.stays.filter(status='CHECKED_IN').select_related('room'):
+            if s.room and s.room.room_number:
+                rn = str(s.room.room_number).strip()
+                if rn and rn not in seen:
+                    seen.add(rn)
+                    rooms.append(rn)
+        return rooms
+
+    def get_active_stays_count(self, obj):
+        return obj.stays.filter(status='CHECKED_IN').count()
+
+    def get_active_stay_room(self, obj):
+        rooms = self.get_active_stay_rooms(obj)
+        return ", ".join(rooms) if rooms else None
+
     def get_active_stay(self, obj):
         active = obj.stays.filter(status='CHECKED_IN').select_related('room', 'room__room_type').order_by('-created_at').first()
         if not active:
             return None
+        import datetime
+        from django.utils import timezone
+        today = timezone.localdate() if hasattr(timezone, 'localdate') else datetime.date.today()
+        is_overdue = bool(active.expected_checkout_date and active.expected_checkout_date < today)
         return {
             'id': active.id,
             'stay_number': active.stay_number,
@@ -79,6 +232,7 @@ class CustomerHistorySerializer(serializers.ModelSerializer):
             'room_type': active.room.room_type.name if active.room and active.room.room_type else 'Standard',
             'check_in_date': active.check_in_date,
             'expected_checkout_date': active.expected_checkout_date,
+            'is_overdue': is_overdue,
         }
 
     def get_bookings(self, obj):
@@ -147,6 +301,9 @@ class CustomerHistorySerializer(serializers.ModelSerializer):
             return {'type': 'SETTLED', 'amount': 0.0, 'pending_due': 0.0, 'advance_credit': 0.0}
 
     def get_stays(self, obj):
+        import datetime
+        from django.utils import timezone
+        today = timezone.localdate() if hasattr(timezone, 'localdate') else datetime.date.today()
         from apps.billing.services import calculate_stay_bill
         result = []
         for stay in obj.stays.all().select_related('room', 'room__room_type').order_by('-created_at'):
@@ -160,6 +317,8 @@ class CustomerHistorySerializer(serializers.ModelSerializer):
                 stay_status = 'CHECKED_OUT'
                 stay.status = 'CHECKED_OUT'
                 stay.save(update_fields=['status'])
+
+            is_overdue = bool(stay_status == 'CHECKED_IN' and stay.expected_checkout_date and stay.expected_checkout_date < today)
 
             result.append({
                 'id': stay.id,
@@ -175,6 +334,7 @@ class CustomerHistorySerializer(serializers.ModelSerializer):
                 'actual_checkout_time': str(stay.actual_checkout_time) if stay.actual_checkout_time else None,
                 'checkout_date': stay.actual_checkout_date or stay.expected_checkout_date,
                 'status': stay_status,
+                'is_overdue': is_overdue,
                 'grand_total': bill['grand_total'],
                 'total_paid': bill['total_paid'],
                 'balance': pending_bal,

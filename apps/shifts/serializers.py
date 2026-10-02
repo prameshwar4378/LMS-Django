@@ -7,13 +7,19 @@ class CashDrawerSerializer(serializers.ModelSerializer):
     is_in_use = serializers.SerializerMethodField()
     current_shift_id = serializers.SerializerMethodField()
     current_cashier_name = serializers.SerializerMethodField()
+    property_id = serializers.IntegerField(source='property.id', read_only=True)
+    property_name = serializers.CharField(source='property.name', read_only=True)
+    property_code = serializers.CharField(source='property.code', read_only=True)
+    code = serializers.CharField(max_length=30, required=False, allow_blank=True, default='')
 
     class Meta:
         model = CashDrawer
         fields = [
-            'id', 'name', 'code', 'location', 'default_float', 'is_active',
+            'id', 'property', 'property_id', 'property_name', 'property_code',
+            'name', 'code', 'location', 'default_float', 'is_active',
             'allow_shared_users', 'is_in_use', 'current_shift_id', 'current_cashier_name'
         ]
+        read_only_fields = ['id', 'property', 'property_id', 'property_name', 'property_code', 'is_in_use', 'current_shift_id', 'current_cashier_name']
 
     def get_is_in_use(self, obj):
         return obj.shifts.filter(status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]).exists()

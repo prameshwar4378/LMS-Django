@@ -9,7 +9,14 @@ from apps.settings_app.tenant_views import TenantScopedViewSetMixin
 from apps.billing.services import generate_unique_payment_number
 
 class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
-    queryset = Customer.objects.all().prefetch_related('documents').order_by('-created_at')
+    queryset = Customer.objects.all().prefetch_related(
+        'documents',
+        'stays',
+        'stays__room',
+        'stays__room__room_type',
+        'stays__payments',
+        'stays__extra_charges'
+    ).order_by('-created_at')
     serializer_class = CustomerSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -36,18 +43,123 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         return super().create(request, *args, **kwargs)
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)
+        instance = self.get_object()
+
+        # Handle explicit document/photo removals if requested
+        if request.data.get('clear_photo') in ['true', 'True', True]:
+            if instance.photo:
+                try:
+                    instance.photo.delete(save=False)
+                except Exception:
+                    pass
+            instance.photo = None
+
+        if request.data.get('clear_id_document') in ['true', 'True', True]:
+            if instance.id_document:
+                try:
+                    instance.id_document.delete(save=False)
+                except Exception:
+                    pass
+            instance.id_document = None
+
+        if request.data.get('clear_id_document_back') in ['true', 'True', True]:
+            if instance.id_document_back:
+                try:
+                    instance.id_document_back.delete(save=False)
+                except Exception:
+                    pass
+            instance.id_document_back = None
+
+        # Clean up old files if replacing
+        if 'photo' in request.FILES and instance.photo:
+            try:
+                instance.photo.delete(save=False)
+            except Exception:
+                pass
+        if 'id_document' in request.FILES and instance.id_document:
+            try:
+                instance.id_document.delete(save=False)
+            except Exception:
+                pass
+        if 'id_document_back' in request.FILES and instance.id_document_back:
+            try:
+                instance.id_document_back.delete(save=False)
+            except Exception:
+                pass
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = super().get_queryset()
-        query = self.request.query_params.get('search', None)
-        if query:
+        params = self.request.query_params
+
+        # 1. Search across names, contact, ID, city, address, and active room
+        query = params.get('search', None) or params.get('q', None)
+        if query and query.strip():
+            q = query.strip()
             queryset = queryset.filter(
-                Q(first_name__icontains=query) |
-                Q(middle_name__icontains=query) |
-                Q(last_name__icontains=query) |
-                Q(mobile__icontains=query) |
-                Q(id_number__icontains=query) |
-                Q(email__icontains=query)
-            )
+                Q(first_name__icontains=q) |
+                Q(middle_name__icontains=q) |
+                Q(last_name__icontains=q) |
+                Q(mobile__icontains=q) |
+                Q(alternate_mobile__icontains=q) |
+                Q(id_number__icontains=q) |
+                Q(email__icontains=q) |
+                Q(city__icontains=q) |
+                Q(address__icontains=q) |
+                Q(stays__room__room_number__icontains=q)
+            ).distinct()
+
+        # 2. Status filter
+        status_filter = params.get('status', '').strip().upper()
+        if status_filter in ['IN_HOUSE', 'CHECKED_IN']:
+            queryset = queryset.filter(stays__status='CHECKED_IN').distinct()
+        elif status_filter in ['CHECKED_OUT', 'NOT_IN_HOUSE']:
+            queryset = queryset.filter(stays__status__in=['CHECKED_OUT', 'COMPLETED']).distinct()
+        elif status_filter in ['CREDIT', 'WALLET_CREDIT']:
+            queryset = queryset.filter(advance_credit__gt=0.01).distinct()
+
+        # 3. ID Proof Type filter
+        id_type = params.get('id_type', '').strip()
+        if id_type and id_type.lower() != 'all':
+            queryset = queryset.filter(id_type__iexact=id_type)
+
+        # 4. Gender filter
+        gender = params.get('gender', '').strip()
+        if gender and gender.lower() != 'all':
+            queryset = queryset.filter(gender__iexact=gender)
+
+        # 5. City filter
+        city = params.get('city', '').strip()
+        if city and city.lower() != 'all':
+            queryset = queryset.filter(city__icontains=city)
+
+        # 6. Has documents / photo filter
+        has_doc = params.get('has_document', '').strip().lower()
+        if has_doc == 'true':
+            queryset = queryset.filter(
+                Q(id_document__isnull=False) | Q(id_document_back__isnull=False) | Q(documents__isnull=False)
+            ).distinct()
+        elif has_doc == 'false':
+            queryset = queryset.filter(
+                id_document__isnull=True, id_document_back__isnull=True, documents__isnull=True
+            ).distinct()
+
+        has_photo = params.get('has_photo', '').strip().lower()
+        if has_photo == 'true':
+            queryset = queryset.exclude(Q(photo='') | Q(photo__isnull=True))
+        elif has_photo == 'false':
+            queryset = queryset.filter(Q(photo='') | Q(photo__isnull=True))
+
         return queryset
 
     @action(detail=True, methods=['get'])

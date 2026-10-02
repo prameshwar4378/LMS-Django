@@ -144,6 +144,11 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     def update_permissions(self, request, pk=None):
         target_user = self.get_object()
         new_perms = request.data.get('permissions')
+        if new_perms is None:
+            new_perms = request.data.get('custom_permissions')
+        if new_perms is None and isinstance(request.data, dict) and ('rooms' in request.data or 'bookings' in request.data or 'stays' in request.data):
+            new_perms = request.data
+
         if new_perms is not None and isinstance(new_perms, dict):
             target_user.custom_permissions = new_perms
             target_user.save(update_fields=['custom_permissions'])

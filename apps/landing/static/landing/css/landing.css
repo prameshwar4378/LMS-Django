@@ -280,19 +280,23 @@ h1, h2, h3, h4, h5, h6 {
 .floating-hero-badge {
   position: absolute;
   z-index: 15;
-  background: rgba(13, 19, 31, 0.88);
+  background: var(--bg-card);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  border: 1px solid var(--border-gold);
   border-radius: var(--radius-pill);
   padding: 10px 20px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(245, 158, 11, 0.25);
+  box-shadow: var(--shadow-card), var(--shadow-glow-gold);
   display: inline-flex;
   align-items: center;
   gap: 10px;
   font-size: 0.85rem;
-  color: #fff;
+  color: var(--text-primary);
   pointer-events: none;
+}
+
+.floating-hero-badge strong {
+  color: var(--color-gold);
 }
 
 .badge-pos-1 {
@@ -313,14 +317,18 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   gap: 10px;
   padding: 6px 18px;
-  background: rgba(16, 24, 39, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-pill);
   font-size: 0.82rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   backdrop-filter: blur(12px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-card);
   transition: all 0.3s ease;
+}
+
+.activity-ticker-pill #activityTickerText {
+  color: var(--text-primary);
 }
 
 .ticker-pulse-dot {
@@ -546,10 +554,11 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   gap: 20px;
   padding: 12px 28px;
-  background: rgba(16, 24, 39, 0.6);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-pill);
   backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
   margin-top: 25px;
 }
 
@@ -562,7 +571,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .metric-item strong {
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 700;
 }
 
@@ -817,6 +826,10 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 11px;
 }
 
+.feature-check-list li strong {
+  color: var(--text-primary);
+}
+
 .feature-check-list li i {
   color: var(--color-emerald);
   font-size: 1.05rem;
@@ -831,7 +844,7 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--radius-lg);
   overflow: hidden;
   backdrop-filter: blur(16px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-card);
 }
 
 .comparison-table {
@@ -845,7 +858,8 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1.1rem;
   font-weight: 700;
   border-bottom: 1px solid var(--border-subtle);
-  background: rgba(8, 12, 20, 0.9);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .comparison-table td {
@@ -862,16 +876,16 @@ h1, h2, h3, h4, h5, h6 {
 
 .col-feature {
   font-weight: 600;
-  color: #fff !important;
+  color: var(--text-primary) !important;
 }
 
 .col-legacy {
-  color: #f87171 !important;
+  color: #ef4444 !important;
   background: rgba(239, 68, 68, 0.03);
 }
 
 .col-innvetrix {
-  color: var(--color-gold-light) !important;
+  color: var(--color-gold) !important;
   font-weight: 600;
   background: rgba(245, 158, 11, 0.06);
   border-left: 2px solid rgba(245, 158, 11, 0.2);
@@ -930,8 +944,12 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 3.2rem;
   font-weight: 800;
   font-family: var(--font-heading);
-  color: #fff;
+  color: var(--text-primary);
   line-height: 1;
+}
+
+.pricing-card.featured .price-value {
+  color: var(--color-gold);
 }
 
 .price-period {
@@ -944,10 +962,12 @@ h1, h2, h3, h4, h5, h6 {
   display: inline-flex;
   align-items: center;
   gap: 14px;
-  background: rgba(16, 24, 39, 0.85);
+  background: var(--bg-card);
   padding: 6px 18px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  color: var(--text-primary);
   margin-bottom: 40px;
 }
 
@@ -1268,9 +1288,45 @@ input:checked + .slider-round:before {
 .form-label {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--text-primary);
   margin-bottom: 6px;
   display: block;
+}
+
+/* Quick Jump Module Navigation Pills */
+.module-jump-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.25s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+}
+
+.module-jump-pill:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px var(--color-gold-glow);
+}
+
+/* POS Receipt Mockup */
+.receipt-mockup-box {
+  background: rgba(16, 24, 39, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  font-family: monospace;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
 }
 
 /* Tape Chart Mockup Styles */
@@ -1937,6 +1993,7 @@ html, body {
 [data-theme="light"] .pricing-card,
 [data-theme="light"] .contact-card,
 [data-theme="light"] .contact-touchpoint-card,
+[data-theme="light"] .glass-card,
 [data-theme="light"] #regional-corridors .rounded-4,
 [data-theme="light"] .cta-banner {
   background: #ffffff !important;
@@ -1945,20 +2002,55 @@ html, body {
 }
 
 [data-theme="light"] .feature-card:hover,
-[data-theme="light"] .pricing-card:hover {
+[data-theme="light"] .pricing-card:hover,
+[data-theme="light"] .glass-card:hover {
+  background: #ffffff !important;
   box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.1) !important;
 }
 
+/* Light Theme Animated Gradient Text: Rich, Dark Pigments (Zero White Stops) */
+[data-theme="light"] .animated-gradient-text,
+[data-theme="light"] .gradient-text-gold,
+[data-theme="light"] .gradient-title-flow {
+  background: linear-gradient(
+    120deg,
+    #9a3412 0%,
+    #d97706 25%,
+    #b45309 50%,
+    #0284c7 75%,
+    #9a3412 100%
+  ) !important;
+  background-size: 280% 280% !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  filter: drop-shadow(0 1px 2px rgba(217, 119, 6, 0.15)) !important;
+}
+
+[data-theme="light"] .animated-gradient-cyan {
+  background: linear-gradient(
+    120deg,
+    #0369a1 0%,
+    #0284c7 30%,
+    #4338ca 65%,
+    #0369a1 100%
+  ) !important;
+  background-size: 280% 280% !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  filter: drop-shadow(0 1px 2px rgba(2, 132, 199, 0.15)) !important;
+}
+
+/* Typography in Light Mode */
 [data-theme="light"] h1:not(.animated-gradient-text):not(.text-warning),
 [data-theme="light"] h2:not(.animated-gradient-text):not(.text-warning),
-[data-theme="light"] h3:not(.text-warning):not(.text-info):not(.text-success),
+[data-theme="light"] h3:not(.animated-gradient-text):not(.text-warning):not(.text-info):not(.text-success),
 [data-theme="light"] h4:not(.text-warning):not(.text-info):not(.text-success),
 [data-theme="light"] h5:not(.text-warning):not(.text-info):not(.text-success),
 [data-theme="light"] h6:not(.text-warning):not(.text-info):not(.text-success) {
   color: #0f172a;
 }
 
-[data-theme="light"] .text-white:not(.btn-gold):not(.btn-primary):not(.btn-success):not(.footer-main *) {
+[data-theme="light"] .text-white:not(.btn-gold):not(.btn-primary):not(.btn-success):not(.btn-danger):not(.badge):not(.footer-main *) {
   color: #0f172a !important;
 }
 
@@ -1970,7 +2062,252 @@ html, body {
   color: #64748b !important;
 }
 
+[data-theme="light"] .border-secondary {
+  border-color: #cbd5e1 !important;
+}
+
+/* Comparison Table in Light Mode */
+[data-theme="light"] .comparison-table-wrap {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .comparison-table th {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+[data-theme="light"] .comparison-table th.text-white {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .comparison-table td {
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .comparison-table tr:hover td {
+  background: rgba(241, 245, 249, 0.7) !important;
+}
+
+[data-theme="light"] .col-feature {
+  color: #0f172a !important;
+  font-weight: 600;
+}
+
+[data-theme="light"] .col-legacy {
+  color: #dc2626 !important;
+  background: rgba(239, 68, 68, 0.05) !important;
+}
+
+[data-theme="light"] .col-innvetrix {
+  color: #b45309 !important;
+  background: rgba(217, 119, 6, 0.07) !important;
+  border-left: 2px solid rgba(217, 119, 6, 0.3) !important;
+}
+
+/* All Dark Container Cards & Mockups inside Light Mode */
+[data-theme="light"] .bg-dark,
+[data-theme="light"] .bg-dark.bg-opacity-60,
+[data-theme="light"] .bg-dark.bg-opacity-75 {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: none !important;
+}
+
+[data-theme="light"] .receipt-mockup-box {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .glass-card div[style*="rgba(255,255,255,0.03)"],
+[data-theme="light"] .glass-card div[style*="rgba(255, 255, 255, 0.03)"] {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .progress {
+  background-color: #e2e8f0 !important;
+}
+
+/* Interactive Mockup Tabs in Light Mode */
+[data-theme="light"] .mockup-wrapper {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.35), rgba(2, 132, 199, 0.2), rgba(0, 0, 0, 0.05)) !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.12), var(--shadow-glow-gold) !important;
+}
+
+[data-theme="light"] .mockup-inner {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .mockup-header {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .mockup-address {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+[data-theme="light"] .mockup-tab-nav {
+  background: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .mockup-tab-btn {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .mockup-tab-btn:hover {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .mockup-tab-btn.active {
+  background: #d97706 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(217, 119, 6, 0.35) !important;
+}
+
+[data-theme="light"] .mockup-tab-pane {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .mockup-tab-pane div[style*="rgba(255, 255, 255, 0.04)"],
+[data-theme="light"] .mockup-tab-pane div[style*="background: rgba(255,255,255,0.04)"] {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Tape Chart Matrix in Light Mode */
+[data-theme="light"] .tapechart-grid {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .tapechart-cell-room {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .tapechart-cell-header {
+  background: #f1f5f9 !important;
+  color: #b45309 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .tapechart-cell-booked {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border: 1px solid rgba(217, 119, 6, 0.4) !important;
+  color: #92400e !important;
+}
+
+[data-theme="light"] .tapechart-cell-stay {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  color: #065f46 !important;
+}
+
+[data-theme="light"] .tapechart-cell-avail {
+  background: #ffffff !important;
+  border: 1px dashed #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+/* Badges & Pills in Light Mode */
+[data-theme="light"] .activity-ticker-pill {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: #1e293b !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .activity-ticker-pill #activityTickerText {
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .hero-metrics-pill {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .metric-item {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .metric-item strong {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .floating-hero-badge {
+  background: #ffffff !important;
+  border-color: rgba(217, 119, 6, 0.35) !important;
+  color: #0f172a !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12), 0 0 20px rgba(217, 119, 6, 0.15) !important;
+}
+
+[data-theme="light"] .floating-hero-badge strong {
+  color: #b45309 !important;
+}
+
+[data-theme="light"] .module-jump-pill {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #1e293b !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .module-jump-pill:hover {
+  background: #fef3c7 !important;
+  border-color: #d97706 !important;
+  color: #92400e !important;
+}
+
+[data-theme="light"] .badge.bg-dark {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .badge-luxury {
+  background: rgba(217, 119, 6, 0.08) !important;
+  border-color: rgba(217, 119, 6, 0.35) !important;
+  color: #b45309 !important;
+}
+
+/* Pricing in Light Mode */
+[data-theme="light"] .price-value {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .pricing-card.featured .price-value {
+  color: #d97706 !important;
+}
+
+[data-theme="light"] .billing-toggle-wrap {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .billing-toggle-wrap span {
+  color: #334155 !important;
+}
+
 /* Form Controls in Light Mode */
+[data-theme="light"] .form-label {
+  color: #1e293b !important;
+}
+
 [data-theme="light"] .form-control,
 [data-theme="light"] .form-select {
   background-color: #ffffff !important;
@@ -2008,13 +2345,6 @@ html, body {
 [data-theme="light"] .accordion-body {
   background-color: #ffffff !important;
   color: #475569 !important;
-}
-
-/* Badges in Light Mode */
-[data-theme="light"] .badge-luxury {
-  background: rgba(217, 119, 6, 0.08) !important;
-  border-color: rgba(217, 119, 6, 0.35) !important;
-  color: #b45309 !important;
 }
 
 /* Dialogue Modal in Light Mode */
