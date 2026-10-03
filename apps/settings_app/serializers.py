@@ -16,7 +16,7 @@ class SettingsSerializer(serializers.ModelSerializer):
     whatsapp_api_url = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")
     whatsapp_api_key = serializers.CharField(required=False, allow_blank=True, default="")
     whatsapp_default_country_code = serializers.CharField(required=False, allow_blank=True, default="+91")
-    whatsapp_open_mode = serializers.CharField(required=False, allow_blank=True, default="app_autoclose")
+    whatsapp_open_mode = serializers.CharField(required=False, allow_blank=True, default="universal")
     whatsapp_auto_close_tab = serializers.BooleanField(required=False, default=True)
     whatsapp_close_delay_seconds = serializers.IntegerField(required=False, default=2)
     whatsapp_booking_template = serializers.CharField(required=False, allow_blank=True)

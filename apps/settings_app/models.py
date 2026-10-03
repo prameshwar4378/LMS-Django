@@ -127,9 +127,9 @@ class Settings(models.Model):
     whatsapp_api_key = models.CharField(max_length=255, blank=True, default="", help_text="WhatsApp Gateway Token / Key (optional)")
 
     # Configurable WhatsApp Customer Messaging (Manual Send)
-    whatsapp_enabled = models.BooleanField(default=False, help_text="Master toggle to enable customer WhatsApp messaging")
+    whatsapp_enabled = models.BooleanField(default=True, help_text="Master toggle to enable customer WhatsApp messaging")
     whatsapp_default_country_code = models.CharField(max_length=10, default="+91", blank=True, help_text="Default international country code (e.g. +91)")
-    whatsapp_open_mode = models.CharField(max_length=50, default="app_autoclose", blank=True, help_text="Preferred opening mode: 'app_autoclose', 'app_direct', 'web', 'universal'")
+    whatsapp_open_mode = models.CharField(max_length=50, default="universal", blank=True, help_text="Preferred opening mode: 'universal', 'web', 'app_autoclose', 'app_direct'")
     whatsapp_auto_close_tab = models.BooleanField(default=True, help_text="Automatically close temporary tab after opening WhatsApp Desktop app")
     whatsapp_close_delay_seconds = models.PositiveSmallIntegerField(default=2, help_text="Auto-close countdown delay in seconds")
     

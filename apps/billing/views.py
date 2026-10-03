@@ -282,11 +282,32 @@ class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
         stay = get_object_or_404(Stay, pk=stay_id)
         prop = stay.property or self.get_property_for_request()
         from apps.billing.invoice_generator import get_or_create_invoice_for_stay
-        invoice, bill, settings_obj, err = get_or_create_invoice_for_stay(stay, prop=prop)
+        invoice, bill, settings_obj, err = get_or_create_invoice_for_stay(stay, prop=prop, allow_proforma=True)
         if err:
             return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
 
-        invoice_data = self.get_serializer(invoice).data
+        if invoice:
+            invoice_data = self.get_serializer(invoice).data
+        else:
+            cust_name = stay.primary_customer.full_name if stay.primary_customer else ''
+            room_num = stay.room.room_number if stay.room else ''
+            invoice_data = {
+                'id': None,
+                'stay': stay.id,
+                'stay_number': stay.stay_number,
+                'customer_name': cust_name,
+                'room_number': room_num,
+                'invoice_number': f"PROFORMA-{stay.stay_number}",
+                'subtotal': float(bill.get('gross_subtotal', bill.get('subtotal', 0))),
+                'discount': float(bill.get('discount_amount', 0)),
+                'tax': float(bill.get('gst_amount', bill.get('tax_amount', 0))),
+                'grand_total': float(bill.get('grand_total', 0)),
+                'paid_amount': float(bill.get('total_paid', 0)),
+                'balance': float(bill.get('balance', 0)),
+                'generated_at': None,
+                'is_proforma': True,
+            }
+
         return Response({
             'invoice': invoice_data,
             'bill': bill,
@@ -301,17 +322,17 @@ class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
             },
             'stay_details': {
                 'stay_number': stay.stay_number,
-                'room_number': stay.room.room_number,
-                'room_type': stay.room.room_type.name,
-                'check_in_date': stay.check_in_date,
+                'room_number': stay.room.room_number if stay.room else '',
+                'room_type': stay.room.room_type.name if stay.room and stay.room.room_type else 'Standard',
+                'check_in_date': str(stay.check_in_date) if stay.check_in_date else '',
                 'check_in_time': stay.check_in_time.strftime('%H:%M') if stay.check_in_time else '',
-                'checkout_date': stay.actual_checkout_date or stay.expected_checkout_date,
+                'checkout_date': str(stay.actual_checkout_date or stay.expected_checkout_date or ''),
                 'checkout_time': stay.actual_checkout_time.strftime('%H:%M') if stay.actual_checkout_time else '',
-                'customer_name': stay.primary_customer.full_name,
-                'customer_mobile': stay.primary_customer.mobile,
-                'customer_address': stay.primary_customer.address or '',
-                'customer_id_type': stay.primary_customer.id_type,
-                'customer_id_number': stay.primary_customer.id_number or '',
+                'customer_name': stay.primary_customer.full_name if stay.primary_customer else '',
+                'customer_mobile': stay.primary_customer.mobile if stay.primary_customer else '',
+                'customer_address': (stay.primary_customer.address or '') if stay.primary_customer else '',
+                'customer_id_type': stay.primary_customer.id_type if stay.primary_customer else '',
+                'customer_id_number': (stay.primary_customer.id_number or '') if stay.primary_customer else '',
                 'guests': [g.guest_name for g in stay.guests.all()],
                 'extra_charges': [{'description': item.description, 'quantity': item.quantity, 'price': float(item.unit_price), 'amount': float(item.amount)} for item in stay.extra_charges.all()],
                 'payments': [{'payment_number': p.payment_number, 'method': p.get_payment_method_display(), 'date': p.payment_date.strftime('%d/%m/%Y %I:%M %p') if p.payment_date else '', 'amount': float(p.amount)} for p in stay.payments.all()],
@@ -327,7 +348,7 @@ class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
 
         prop = stay.property or (getattr(user, 'property', None) if user else None)
         from apps.billing.invoice_generator import get_or_create_invoice_for_stay, generate_invoice_pdf_bytes, render_invoice_html
-        invoice, bill, settings_obj, err = get_or_create_invoice_for_stay(stay, prop=prop)
+        invoice, bill, settings_obj, err = get_or_create_invoice_for_stay(stay, prop=prop, allow_proforma=True)
         if err:
             return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -356,7 +377,7 @@ class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
 
         prop = stay.property or (getattr(user, 'property', None) if user else None)
         from apps.billing.invoice_generator import get_or_create_invoice_for_stay, render_invoice_html
-        invoice, bill, settings_obj, err = get_or_create_invoice_for_stay(stay, prop=prop)
+        invoice, bill, settings_obj, err = get_or_create_invoice_for_stay(stay, prop=prop, allow_proforma=True)
         if err:
             return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
 

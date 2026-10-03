@@ -6,10 +6,12 @@ from apps.billing.services import calculate_stay_bill, generate_unique_invoice_n
 from apps.settings_app.models import Settings
 from apps.stays.models import Stay
 
-def get_or_create_invoice_for_stay(stay, prop=None):
+def get_or_create_invoice_for_stay(stay, prop=None, allow_proforma=False):
     """
     Retrieves the existing invoice for the stay or creates a new one
     if the stay is checked out. Returns (invoice, bill, settings_obj, error_message).
+    If allow_proforma is True, active stays return (None, bill, settings_obj, None)
+    allowing preview/proforma folio generation without creating a DB record.
     """
     if not prop:
         prop = stay.property
@@ -19,6 +21,8 @@ def get_or_create_invoice_for_stay(stay, prop=None):
     invoice = getattr(stay, 'invoice', None) or Invoice.objects.filter(stay=stay).first()
     if not invoice:
         if stay.status != Stay.Status.CHECKED_OUT and not stay.actual_checkout_date:
+            if allow_proforma:
+                return None, bill, settings_obj, None
             return None, bill, settings_obj, "Invoice can only be generated after checkout is completed."
 
         inv_number = generate_unique_invoice_number(prop, settings_obj.invoice_prefix)
