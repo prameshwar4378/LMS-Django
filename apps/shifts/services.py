@@ -195,3 +195,39 @@ def calculate_shift_operational_metrics(shift):
         'total_room_rate': float(total_room_rate),
         'adr': round(adr, 2)
     }
+
+def check_active_shift_required_for_payment(user, prop=None):
+    """
+    Validates whether an active shift is required for processing a payment.
+    Returns (user_shift, None) if allowed, or (None, error_message) if an open shift is required but missing.
+    If hotel operates in SINGLE_OWNER mode, shifts are bypassed and returns (None, None).
+    """
+    if not user or not user.is_authenticated:
+        return None, "Authentication required to receive payments."
+
+    user_prop = prop or getattr(user, 'property', None)
+
+    # If single-owner property, shifts are bypassed
+    if user_prop and hasattr(user_prop, 'is_single_owner') and user_prop.is_single_owner:
+        return None, None
+
+    from apps.settings_app.models import Settings
+    sett = Settings.get_settings(prop=user_prop)
+    is_shift_wise = getattr(user_prop, 'is_shift_wise', True) if user_prop else (getattr(sett, 'shift_operation_mode', None) != 'SINGLE_OPERATOR')
+
+    if not is_shift_wise:
+        return None, None
+
+    active_shift = get_active_shift_for_user(user, prop=user_prop)
+    if not active_shift:
+        from apps.shifts.models import Shift
+        active_shift = Shift.objects.filter(
+            user=user,
+            status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]
+        ).order_by('-opened_at', '-id').first()
+
+    if not active_shift:
+        return None, "Cashier Shift Till is Closed. You must open a shift before receiving or recording payments."
+
+    return active_shift, None
+

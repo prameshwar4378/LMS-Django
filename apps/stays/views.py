@@ -85,8 +85,28 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 require_perm(user, 'billing', 'can_give_discount', "You do not have permission to apply discounts.")
                 max_pct = get_perm_limit(user, 'billing', 'max_discount_percent', fallback=10.0)
                 disc_type = data.get('discount_type', 'PERCENT')
-                if disc_type == 'PERCENT' and disc_float > max_pct:
+                if disc_type in ['PERCENT', 'PERCENTAGE'] and disc_float > max_pct:
                     return Response({'success': False, 'message': f"Discount of {disc_float}% exceeds your allowed limit of {max_pct}%."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate advance payment requires active shift
+        advance_payment = data.get('advance_payment')
+        if advance_payment:
+            try:
+                adv_float = float(advance_payment)
+            except (ValueError, TypeError):
+                adv_float = 0.0
+            if adv_float > 0:
+                from apps.shifts.services import check_active_shift_required_for_payment
+                user_prop = self.get_property_for_request() or getattr(user, 'property', None)
+                _, shift_err = check_active_shift_required_for_payment(user, prop=user_prop)
+                if shift_err:
+                    return Response({
+                        'success': False,
+                        'message': shift_err,
+                        'error': shift_err,
+                        'detail': 'Cannot receive advance payment because cashier shift till is closed. An active open shift is strictly required to attribute payments and balance tills.',
+                        'code': 'SHIFT_REQUIRED'
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
         # 1. Validate payload and room availability via services
         validated_attrs, errors = validate_booking_payload(
@@ -198,6 +218,7 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                         room_rate=validated_attrs['room_rate'],
                         discount_type=validated_attrs['discount_type'],
                         discount_value=validated_attrs['discount_value'],
+                        discount_reason=data.get('discount_reason', '') or '',
                         chargeable_nights=validated_attrs.get('chargeable_nights'),
                         notes=data.get('notes', '') or '',
                         status=Stay.Status.CHECKED_IN,
@@ -211,7 +232,7 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         advance_payment = data.get('advance_payment')
         if advance_payment and float(advance_payment) > 0:
             from apps.shifts.services import get_active_shift_for_user
-            user_shift = get_active_shift_for_user(user)
+            user_shift = get_active_shift_for_user(user, prop=user_prop)
 
             for _ in range(10):
                 payment_number = generate_unique_payment_number("PAY-")
@@ -436,6 +457,26 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         require_perm(request.user, 'stays', 'can_checkout', "You do not have permission to process guest check-outs.")
         stay = self.get_object()
 
+        # Strict Cashier Shift Till Enforcement: Check if payment is being received
+        payment_amount = request.data.get('payment_amount')
+        user_shift = None
+        if payment_amount:
+            try:
+                pay_float = float(payment_amount)
+            except (ValueError, TypeError):
+                pay_float = 0.0
+            if pay_float > 0:
+                from apps.shifts.services import check_active_shift_required_for_payment
+                user_shift, shift_err = check_active_shift_required_for_payment(request.user, prop=stay.property)
+                if shift_err:
+                    return Response({
+                        'success': False,
+                        'message': shift_err,
+                        'error': shift_err,
+                        'detail': 'Cannot receive checkout settlement payment because cashier shift till is closed. An active open shift is strictly required to attribute payments and balance tills.',
+                        'code': 'SHIFT_REQUIRED'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
         # Determine custom actual_checkout_date and actual_checkout_time if provided
         now = datetime.datetime.now()
         custom_date_str = request.data.get('actual_checkout_date')
@@ -506,11 +547,10 @@ class StayViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         stay.save()
 
         # 3. Handle checkout payment if provided
-        # 3. Handle checkout payment if provided
-        payment_amount = request.data.get('payment_amount')
         if payment_amount and float(payment_amount) > 0:
-            from apps.shifts.services import get_active_shift_for_user
-            user_shift = get_active_shift_for_user(request.user)
+            if not user_shift:
+                from apps.shifts.services import get_active_shift_for_user
+                user_shift = get_active_shift_for_user(request.user, prop=stay.property)
 
             pay_number = generate_unique_payment_number("PAY-")
             for _ in range(10):

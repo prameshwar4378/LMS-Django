@@ -88,6 +88,18 @@ class PaymentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         except (ValueError, TypeError):
             pass
 
+        # Strict Cashier Shift Till Enforcement: Cannot record payment without an open shift
+        from apps.shifts.services import check_active_shift_required_for_payment
+        prop = self.get_property_for_request() or getattr(request.user, 'property', None)
+        user_shift, shift_err = check_active_shift_required_for_payment(request.user, prop=prop)
+        if shift_err:
+            return Response({
+                'error': shift_err,
+                'message': shift_err,
+                'detail': 'Cannot receive payment because cashier shift till is closed. An active open shift is strictly required to attribute payments and balance tills.',
+                'code': 'SHIFT_REQUIRED'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         stay_id = request.data.get('stay')
         use_wallet = request.data.get('use_wallet_credit') in [True, 'true', 'True'] or request.data.get('payment_method') == 'WALLET'
         if stay_id:
@@ -226,6 +238,17 @@ class PaymentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         instance = self.get_object()
         if instance.stay and instance.stay.status in ['CHECKED_OUT', 'COMPLETED'] and not is_admin_user(request.user):
             return Response({'error': 'Receptionists cannot modify payments of checked out stays. Admin rights required.'}, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.shifts.services import check_active_shift_required_for_payment
+        prop = self.get_property_for_request() or getattr(request.user, 'property', None)
+        _, shift_err = check_active_shift_required_for_payment(request.user, prop=prop)
+        if shift_err:
+            return Response({
+                'error': shift_err,
+                'message': shift_err,
+                'code': 'SHIFT_REQUIRED'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):

@@ -418,20 +418,23 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         # Resolve active shift for cashier / receptionist
         user = request.user if request.user and request.user.is_authenticated else None
-        shift = None
+        from apps.shifts.services import check_active_shift_required_for_payment
+        shift, shift_err = check_active_shift_required_for_payment(user, prop=cust_prop)
+        if shift_err:
+            return Response({
+                'success': False,
+                'message': shift_err,
+                'error': shift_err,
+                'detail': 'Cannot receive customer payment or advance credit because cashier shift till is closed. An active open shift is strictly required to attribute payments and balance tills.',
+                'code': 'SHIFT_REQUIRED'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         shift_id = request.data.get('shift') or request.data.get('shift_id')
         if shift_id:
             from apps.shifts.models import Shift
-            shift = Shift.objects.filter(id=shift_id).first()
-        if not shift and user:
-            from apps.shifts.services import get_active_shift_for_user
-            shift = get_active_shift_for_user(user)
-            if not shift:
-                from apps.shifts.models import Shift
-                shift = Shift.objects.filter(user=user, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]).first()
-        if not shift and cust_prop:
-            from apps.shifts.models import Shift
-            shift = Shift.objects.filter(property=cust_prop, status=Shift.Status.OPEN).first()
+            custom_shift = Shift.objects.filter(id=shift_id).first()
+            if custom_shift:
+                shift = custom_shift
 
         with transaction.atomic():
             if is_wallet_payment:
@@ -658,7 +661,7 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         # Resolve active receptionist / cashier shift and property
         user = request.user if request.user and request.user.is_authenticated else None
-        from apps.shifts.services import get_active_shift_for_user, log_shift_action
+        from apps.shifts.services import check_active_shift_required_for_payment, get_active_shift_for_user, log_shift_action
         from apps.shifts.models import Shift
         from apps.settings_app.tenant_views import get_active_property_for_request
 
@@ -666,16 +669,21 @@ class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if not prop and user:
             prop = getattr(user, 'property', None)
 
-        shift = None
+        shift, shift_err = check_active_shift_required_for_payment(user, prop=prop)
+        if shift_err:
+            return Response({
+                'success': False,
+                'message': shift_err,
+                'error': shift_err,
+                'detail': 'Cannot issue refund because cashier shift till is closed. An active open shift is strictly required to record cash and refund payouts.',
+                'code': 'SHIFT_REQUIRED'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         shift_id = request.data.get('shift') or request.data.get('shift_id')
         if shift_id:
-            shift = Shift.objects.filter(id=shift_id).first()
-        if not shift and user:
-            shift = get_active_shift_for_user(user)
-        if not shift and user:
-            shift = Shift.objects.filter(user=user, status__in=[Shift.Status.OPEN, Shift.Status.CLOSING]).first()
-        if not shift and prop:
-            shift = Shift.objects.filter(property=prop, status=Shift.Status.OPEN).first()
+            custom_shift = Shift.objects.filter(id=shift_id).first()
+            if custom_shift:
+                shift = custom_shift
 
         cust_display_name = customer.full_name or customer.first_name or "Guest"
 

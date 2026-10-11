@@ -70,6 +70,26 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         require_perm(request.user, 'bookings', 'can_create', "You do not have permission to create reservations.")
         self._validate_booking_discount(request.user, request.data)
+
+        # Validate shift requirement if advance payment is being collected
+        raw_adv_input = request.data.get('advance_payment') or request.data.get('advance_amount')
+        try:
+            raw_adv_check = float(raw_adv_input) if raw_adv_input not in (None, '') else 0.0
+        except (ValueError, TypeError):
+            raw_adv_check = 0.0
+        if raw_adv_check > 0:
+            from apps.shifts.services import check_active_shift_required_for_payment
+            user_prop = self.get_property_for_request() or getattr(request.user, 'property', None)
+            _, shift_err = check_active_shift_required_for_payment(request.user, prop=user_prop)
+            if shift_err:
+                return Response({
+                    'success': False,
+                    'message': shift_err,
+                    'error': shift_err,
+                    'detail': 'Cannot receive advance deposit because cashier shift till is closed. An active open shift is strictly required to attribute payments and balance tills.',
+                    'code': 'SHIFT_REQUIRED'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_prop = self.get_property_for_request()
@@ -191,6 +211,25 @@ class BookingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 'message': 'Checked-in bookings cannot be modified directly. Please use the Stay Management workflow.',
                 'errors': {'booking': ['Checked-in booking cannot be edited directly.']}
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        if 'advance_amount' in request.data:
+            from django.db.models import Sum
+            try:
+                new_adv_val = Decimal(str(request.data.get('advance_amount') or '0.00'))
+            except Exception:
+                new_adv_val = Decimal('0.00')
+            total_rec = instance.payments.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+            if new_adv_val > total_rec:
+                from apps.shifts.services import check_active_shift_required_for_payment
+                _, shift_err = check_active_shift_required_for_payment(request.user, prop=instance.property)
+                if shift_err:
+                    return Response({
+                        'success': False,
+                        'message': shift_err,
+                        'error': shift_err,
+                        'detail': 'Cannot receive additional advance deposit because cashier shift till is closed. An active open shift is strictly required to attribute payments and balance tills.',
+                        'code': 'SHIFT_REQUIRED'
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
